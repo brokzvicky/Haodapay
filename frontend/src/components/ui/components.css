@@ -1,0 +1,143 @@
+/* ============================================================
+   HaodaOne UI component library styles.
+   Bootstrap handles layout/grid/forms; this file covers the pieces
+   Bootstrap doesn't have an opinion on (badges with our semantic palette,
+   skeletons, empty/error states, avatars).
+   ============================================================ */
+
+.hz-card {
+  background: var(--hz-bg-surface);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-lg);
+  box-shadow: var(--hz-shadow-sm);
+  transition: box-shadow var(--hz-transition-base);
+}
+
+.hz-card--hoverable:hover {
+  box-shadow: var(--hz-shadow-md);
+}
+
+.hz-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hz-space-5) var(--hz-space-6);
+  border-bottom: 1px solid var(--hz-border);
+}
+
+.hz-card__title {
+  font-size: var(--hz-text-lg);
+  font-weight: var(--hz-font-weight-semibold);
+  color: var(--hz-text-primary);
+  margin: 0;
+}
+
+.hz-card__subtitle {
+  font-size: var(--hz-text-sm);
+  color: var(--hz-text-secondary);
+  margin: 2px 0 0;
+}
+
+.hz-card__body {
+  padding: var(--hz-space-6);
+}
+
+/* ---- Badges ---- */
+.hz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--hz-radius-full);
+  font-size: var(--hz-text-xs);
+  font-weight: var(--hz-font-weight-semibold);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.hz-badge--dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.hz-badge--success { background: var(--hz-success-50); color: var(--hz-success-600); }
+.hz-badge--warning  { background: var(--hz-warning-50); color: var(--hz-warning-600); }
+.hz-badge--danger   { background: var(--hz-danger-50);  color: var(--hz-danger-600); }
+.hz-badge--info     { background: var(--hz-info-50);    color: var(--hz-info-600); }
+.hz-badge--primary  { background: var(--hz-primary-50); color: var(--hz-primary-700); }
+.hz-badge--neutral  { background: var(--hz-gray-100);   color: var(--hz-gray-600); }
+
+/* ---- Avatar ---- */
+.hz-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: var(--hz-font-weight-semibold);
+  background: var(--hz-primary-100);
+  color: var(--hz-primary-700);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ---- Empty / Error states ---- */
+.hz-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--hz-space-12) var(--hz-space-6);
+}
+
+.hz-state__icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--hz-space-4);
+  background: var(--hz-gray-100);
+  color: var(--hz-text-muted);
+}
+
+.hz-state--error .hz-state__icon-wrap {
+  background: var(--hz-danger-50);
+  color: var(--hz-danger-500);
+}
+
+.hz-state__title {
+  font-size: var(--hz-text-lg);
+  font-weight: var(--hz-font-weight-semibold);
+  color: var(--hz-text-primary);
+  margin: 0 0 6px;
+}
+
+.hz-state__description {
+  font-size: var(--hz-text-sm);
+  color: var(--hz-text-secondary);
+  max-width: 360px;
+  margin: 0 0 var(--hz-space-5);
+}
+
+/* ---- Skeleton ---- */
+.hz-skeleton {
+  background: linear-gradient(90deg, var(--hz-gray-200) 25%, var(--hz-gray-100) 37%, var(--hz-gray-200) 63%);
+  background-size: 800px 100%;
+  animation: hz-shimmer 1.4s ease infinite;
+  border-radius: var(--hz-radius-sm);
+}
+
+/* ---- Full-page loader ---- */
+.hz-page-loader {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hz-bg-canvas);
+}
