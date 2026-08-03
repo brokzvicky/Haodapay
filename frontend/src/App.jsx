@@ -8,6 +8,10 @@ import EmployeeProfile from './pages/employees/EmployeeProfile';
 import AttendanceList from './pages/attendance/AttendanceList';
 import Devices from './pages/attendance/Devices';
 import LeaveRequests from './pages/leave/LeaveRequests';
+import JobOpenings from './pages/recruitment/JobOpenings';
+import CandidatePipeline from './pages/recruitment/CandidatePipeline';
+import PerformanceHub from './pages/performance/PerformanceHub';
+import Reports from './pages/reports/Reports';
 import SettingsUsers from './pages/SettingsUsers';
 import SettingsOrganization from './pages/SettingsOrganization';
 import SettingsLeave from './pages/SettingsLeave';
@@ -28,9 +32,10 @@ export default function App() {
           <Route path="attendance" element={<AttendanceList />} />
           <Route path="attendance/devices" element={<Devices />} />
           <Route path="leave" element={<LeaveRequests />} />
-          <Route path="recruitment" element={<ModulePlaceholder title="Recruitment" phase="Phase 4" />} />
-          <Route path="performance" element={<ModulePlaceholder title="Performance Management" phase="Phase 4" />} />
-          <Route path="reports" element={<ModulePlaceholder title="Reports & Analytics" phase="Phase 5" />} />
+          <Route path="recruitment" element={<JobOpenings />} />
+          <Route path="recruitment/:jobOpeningId" element={<CandidatePipeline />} />
+          <Route path="performance" element={<PerformanceHub />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="settings/users" element={<SettingsUsers />} />
           <Route path="settings/organization" element={<SettingsOrganization />} />
           <Route path="settings/leave" element={<SettingsLeave />} />
