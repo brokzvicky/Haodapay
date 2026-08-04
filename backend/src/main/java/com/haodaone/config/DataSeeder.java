@@ -65,13 +65,16 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         seedPermissions();
         Role superAdmin = seedRole("SUPER_ADMIN", "Full platform access", allPermissions());
-        seedRole("HR_ADMIN", "HR administration - user, role, audit, employee, organization, attendance, and leave management",
+        seedRole("HR_ADMIN", "HR administration - full platform HR management short of user/role administration",
                 permissionsByCode("USER_VIEW", "ROLE_VIEW", "AUDIT_VIEW",
                         "EMPLOYEE_VIEW", "EMPLOYEE_CREATE", "EMPLOYEE_MANAGE", "ORG_VIEW", "ORG_MANAGE",
                         "ATTENDANCE_VIEW", "ATTENDANCE_MANAGE", "DEVICE_MANAGE",
-                        "LEAVE_APPLY", "LEAVE_VIEW", "LEAVE_APPROVE", "LEAVE_MANAGE"));
-        seedRole("MANAGER", "Team lead - visibility into their reports, plus leave approval for their team",
-                permissionsByCode("EMPLOYEE_VIEW", "ORG_VIEW", "ATTENDANCE_VIEW", "LEAVE_APPLY", "LEAVE_VIEW", "LEAVE_APPROVE"));
+                        "LEAVE_APPLY", "LEAVE_VIEW", "LEAVE_APPROVE", "LEAVE_MANAGE",
+                        "RECRUITMENT_VIEW", "RECRUITMENT_MANAGE", "PERFORMANCE_VIEW", "PERFORMANCE_MANAGE",
+                        "REPORTS_VIEW"));
+        seedRole("MANAGER", "Team lead - visibility into their reports, leave approval, and performance management for their team",
+                permissionsByCode("EMPLOYEE_VIEW", "ORG_VIEW", "ATTENDANCE_VIEW", "LEAVE_APPLY", "LEAVE_VIEW", "LEAVE_APPROVE",
+                        "RECRUITMENT_VIEW", "PERFORMANCE_VIEW", "PERFORMANCE_MANAGE", "REPORTS_VIEW"));
         seedRole("EMPLOYEE", "Baseline self-service access - expanded once the ESS module scopes leave/attendance to \"self\"", Set.of());
 
         seedSuperAdminUser(superAdmin);
@@ -116,7 +119,12 @@ public class DataSeeder implements CommandLineRunner {
                 new String[]{"LEAVE_APPLY", "Apply for leave on behalf of employees and view leave balances", "Leave"},
                 new String[]{"LEAVE_VIEW", "View all leave requests and the team leave calendar", "Leave"},
                 new String[]{"LEAVE_APPROVE", "Approve or reject leave requests", "Leave"},
-                new String[]{"LEAVE_MANAGE", "Manage leave types and the holiday calendar", "Leave"}
+                new String[]{"LEAVE_MANAGE", "Manage leave types and the holiday calendar", "Leave"},
+                new String[]{"RECRUITMENT_VIEW", "View job openings, candidates, and interviews", "Recruitment"},
+                new String[]{"RECRUITMENT_MANAGE", "Manage job openings, candidate pipeline, and interviews", "Recruitment"},
+                new String[]{"PERFORMANCE_VIEW", "View goals and performance reviews", "Performance"},
+                new String[]{"PERFORMANCE_MANAGE", "Set goals and conduct performance reviews", "Performance"},
+                new String[]{"REPORTS_VIEW", "View executive, attendance, leave, and recruitment reports", "Reports"}
         );
 
         for (String[] p : permissions) {
@@ -136,6 +144,7 @@ public class DataSeeder implements CommandLineRunner {
                 .orElseGet(() -> {
                     Role role = new Role();
                     role.setName(name);
+                    role.setLabel(name);
                     role.setDescription(description);
                     role.setSystemDefined(true);
                     role.setPermissions(permissions);

@@ -33,11 +33,11 @@ public class DashboardController {
     @PreAuthorize("hasAuthority('EMPLOYEE_VIEW')")
     public DashboardSummaryDTO summary() {
         long total = employeeRepository.countByDeletedFalse();
-        long active = employeeRepository.countByStatusAndDeletedFalse("ACTIVE");
-        long onLeave = employeeRepository.countByStatusAndDeletedFalse("ON_LEAVE");
-        long noticePeriod = employeeRepository.countByStatusAndDeletedFalse("NOTICE_PERIOD");
-        long resigned = employeeRepository.countByStatusAndDeletedFalse("RESIGNED");
-        long terminated = employeeRepository.countByStatusAndDeletedFalse("TERMINATED");
+        long active = employeeRepository.countByStatusAndDeletedFalse("Active");
+        long onLeave = employeeRepository.countByStatusAndDeletedFalse("On Leave");
+        long noticePeriod = employeeRepository.countByStatusAndDeletedFalse("Notice Period");
+        long resigned = employeeRepository.countByStatusAndDeletedFalse("Resigned");
+        long terminated = employeeRepository.countByStatusAndDeletedFalse("Terminated");
 
         List<DashboardSummaryDTO.DepartmentCount> departmentBreakdown = departmentRepository.findAllByDeletedFalseOrderByNameAsc().stream()
                 .map(dept -> new DashboardSummaryDTO.DepartmentCount(

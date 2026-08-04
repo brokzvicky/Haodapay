@@ -65,6 +65,21 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Runs src/main/resources/db/migration/V1__..., V2__... once against
+             the shared HaodaAsset database on startup, so the additive schema
+             alignment and the two new HRMS module tables are applied
+             automatically instead of requiring a manual psql step. Safe to run
+             against a database HaodaAsset already uses: it only ever adds
+             columns/tables, tracked in its own flyway_schema_history table. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>

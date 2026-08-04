@@ -10,11 +10,19 @@ import java.util.Set;
 @Table(name = "role", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
 public class Role extends BaseEntity {
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true, length = 60)
     private String name;
 
     @Column(length = 300)
     private String description;
+
+    /**
+     * Human-readable display name. Reuses the shared role table's existing
+     * "label" column (already NOT NULL there for HaodaAsset) rather than
+     * adding a duplicate. Defaults to name if not set explicitly.
+     */
+    @Column(nullable = false, length = 100)
+    private String label;
 
     /** System-defined roles (SUPER_ADMIN, HR_ADMIN, MANAGER, EMPLOYEE) can't be deleted or renamed from the UI. */
     @Column(name = "system_defined", nullable = false)
@@ -41,6 +49,14 @@ public class Role extends BaseEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getLabel() {
+        return label != null ? label : name;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
     }
 
     public boolean isSystemDefined() {

@@ -41,6 +41,7 @@ public class RoleService {
 
         Role role = new Role();
         role.setName(request.getName());
+        role.setLabel(request.getName());
         role.setDescription(request.getDescription());
         role.setSystemDefined(false);
         role.setPermissions(resolvePermissions(request.getPermissionCodes()));

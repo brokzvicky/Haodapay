@@ -26,13 +26,32 @@ import java.time.LocalDateTime;
                 columnNames = {"device_serial_number", "device_user_id", "punch_time"}))
 public class AttendanceRecord extends BaseEntity {
 
+    /**
+     * The shared attendance_record.employee_id column is HaodaAsset's
+     * human-readable employee code (varchar), not this app's Employee
+     * surrogate bigint id - joining on Employee.id here would fail
+     * Hibernate schema validation (column type mismatch: varchar vs
+     * bigint). referencedColumnName points the join at Employee.employeeCode
+     * (see Employee.java, also mapped to a column named "employee_id")
+     * instead of the default target of the association's @Id.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id")
+    @JoinColumn(name = "employee_id", referencedColumnName = "employee_id")
     private Employee employee;
 
     /** Raw PIN as sent by the device - kept even when resolved to an Employee, for audit/debug. */
     @Column(name = "device_user_id", nullable = false, length = 30)
     private String deviceUserId;
+
+    /**
+     * The shared attendance_record.employee_name column is NOT NULL (a
+     * HaodaAsset-era requirement) but has no DB default, so every punch
+     * this app writes must populate it explicitly - either the resolved
+     * Employee's full name, or an "Unmapped (PIN ...)" placeholder,
+     * mirroring AttendanceRecordDTO's own display fallback.
+     */
+    @Column(name = "employee_name", nullable = false, length = 255)
+    private String employeeName;
 
     @Column(name = "punch_time", nullable = false)
     private LocalDateTime punchTime;
@@ -71,6 +90,14 @@ public class AttendanceRecord extends BaseEntity {
 
     public void setDeviceUserId(String deviceUserId) {
         this.deviceUserId = deviceUserId;
+    }
+
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public void setEmployeeName(String employeeName) {
+        this.employeeName = employeeName;
     }
 
     public LocalDateTime getPunchTime() {

@@ -1,8 +1,9 @@
 # ==========================================================
-# OPTIONAL - application.properties already has working localhost defaults
-# matching docker-compose.yml. You only need this if you're overriding
-# something (different local Postgres, a real JWT secret for a shared
-# dev/staging environment, etc).
+# application.properties reads DB_URL/DB_USERNAME/DB_PASSWORD (and the
+# other vars below) purely from the environment, with no built-in
+# default - so one of these needs to be set before running locally,
+# whether via this local profile, exported shell env vars, or your IDE's
+# run configuration.
 # ==========================================================
 # Copy to `application-local.properties` (gitignored) and run with:
 #   mvn spring-boot:run -Dspring-boot.run.profiles=local

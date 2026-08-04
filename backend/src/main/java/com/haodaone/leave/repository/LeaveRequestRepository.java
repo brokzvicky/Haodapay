@@ -29,4 +29,15 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     /** Employees currently on approved leave covering today - powers the Dashboard "On Leave" widget and team calendar. */
     @Query("select lr from LeaveRequest lr where lr.status = 'APPROVED' and lr.startDate <= :today and lr.endDate >= :today")
     List<LeaveRequest> findActiveOn(@Param("today") LocalDate today);
+
+    long countByStatusAndStartDateBetween(String status, LocalDate start, LocalDate end);
+
+    @Query("select lr.leaveType.name, coalesce(sum(lr.days), 0) from LeaveRequest lr " +
+            "where lr.status = 'APPROVED' and year(lr.startDate) = :year group by lr.leaveType.name")
+    List<Object[]> sumApprovedDaysByLeaveType(@Param("year") int year);
+
+    @Query("select lr.employee.department.name, coalesce(sum(lr.days), 0) from LeaveRequest lr " +
+            "where lr.status = 'APPROVED' and year(lr.startDate) = :year and lr.employee.department is not null " +
+            "group by lr.employee.department.name")
+    List<Object[]> sumApprovedDaysByDepartment(@Param("year") int year);
 }

@@ -16,20 +16,25 @@ import java.time.LocalDate;
  * link is nullable so historical employee records survive even if their
  * User account is later removed.
  *
- * status drives the employee lifecycle: ACTIVE -> ON_LEAVE / NOTICE_PERIOD
- * -> RESIGNED / TERMINATED. Per platform convention, employees are never
+ * status drives the employee lifecycle: Active -> On Leave / Notice Period
+ * -> Resigned / Terminated (see EmploymentStatus.java). Per platform convention, employees are never
  * hard-deleted once they exist - status changes and soft-delete (BaseEntity.deleted)
  * are how records leave the active roster while everything that references
  * them (attendance, leave, audit trail) stays intact.
  */
 @Entity
 @Table(name = "employee", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "employee_code"),
+        @UniqueConstraint(columnNames = "employee_id"),
         @UniqueConstraint(columnNames = "email")
 })
 public class Employee extends BaseEntity {
 
-    @Column(name = "employee_code", nullable = false, unique = true, length = 20)
+    /**
+     * Shared with HaodaAsset: this is its "employee_id" column (its own
+     * human-readable employee code), reused here instead of adding a
+     * duplicate column. Already unique + not null in the shared schema.
+     */
+    @Column(name = "employee_id", nullable = false, unique = true, length = 20)
     private String employeeCode;
 
     @Column(name = "first_name", nullable = false, length = 100)
@@ -38,7 +43,7 @@ public class Employee extends BaseEntity {
     @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
 
-    @Column(nullable = false, unique = true, length = 150)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
     @Column(length = 30)
@@ -58,9 +63,15 @@ public class Employee extends BaseEntity {
     @Column(name = "employment_type", nullable = false, length = 20)
     private String employmentType = "FULL_TIME";
 
-    /** ACTIVE, ON_LEAVE, NOTICE_PERIOD, RESIGNED, TERMINATED */
-    @Column(nullable = false, length = 20)
-    private String status = "ACTIVE";
+    /**
+     * "Active", "On Leave", "Notice Period", "Resigned", "Terminated" -
+     * see EmploymentStatus.java in this package. Reuses HaodaAsset's
+     * existing employment_status column instead of adding a duplicate,
+     * and matches HaodaAsset's own Title Case values exactly since that
+     * app reads/writes and filters on this same column.
+     */
+    @Column(name = "employment_status", nullable = false, length = 30)
+    private String status = EmploymentStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")

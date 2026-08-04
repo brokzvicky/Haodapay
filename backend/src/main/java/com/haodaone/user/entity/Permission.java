@@ -13,14 +13,15 @@ import jakarta.persistence.*;
 @Table(name = "permission", uniqueConstraints = @UniqueConstraint(columnNames = "code"))
 public class Permission extends BaseEntity {
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true, length = 60)
     private String code;
 
-    @Column(nullable = false, length = 200)
+    /** Reuses the shared permission table's existing "label" column instead of adding a duplicate "description". */
+    @Column(name = "label", nullable = false, length = 150)
     private String description;
 
     /** Groups permissions in the Settings > Permissions UI, e.g. "User Management", "Attendance". */
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 60)
     private String module;
 
     public String getCode() {

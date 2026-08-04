@@ -24,4 +24,11 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
 
     @Query("select count(distinct a.employee.id) from AttendanceRecord a where a.employee is not null and a.punchTime between :start and :end")
     long countDistinctEmployeesPunchedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    long countByPunchTimeBetween(LocalDateTime start, LocalDateTime end);
+
+    @Query("select a.employee.department.name, count(a) from AttendanceRecord a " +
+            "where a.employee is not null and a.employee.department is not null and a.punchTime between :start and :end " +
+            "group by a.employee.department.name")
+    List<Object[]> countByDepartmentBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

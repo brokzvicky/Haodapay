@@ -23,8 +23,8 @@ import java.util.Set;
 @Service
 public class EmployeeService {
 
-    /** Valid forward/lateral transitions - keeps the lifecycle honest (e.g. can't go straight from ACTIVE to nothing, or resurrect a TERMINATED record via this endpoint). */
-    private static final Set<String> VALID_STATUSES = Set.of("ACTIVE", "ON_LEAVE", "NOTICE_PERIOD", "RESIGNED", "TERMINATED");
+    /** Valid forward/lateral transitions - keeps the lifecycle honest (e.g. can't go straight from Active to nothing, or resurrect a Terminated record via this endpoint). */
+    private static final Set<String> VALID_STATUSES = com.haodaone.employee.entity.EmploymentStatus.VALID_STATUSES;
     private static final String EMPLOYEE_CODE_PREFIX = "EMP";
     private static final int EMPLOYEE_CODE_DIGITS = 4;
 
@@ -70,7 +70,7 @@ public class EmployeeService {
         Employee employee = new Employee();
         employee.setEmployeeCode(generateEmployeeCode());
         applyRequestFields(employee, request);
-        employee.setStatus("ACTIVE");
+        employee.setStatus(com.haodaone.employee.entity.EmploymentStatus.ACTIVE);
 
         Employee saved = employeeRepository.save(employee);
         auditLogService.log("Employee", saved.getId(), "CREATE",

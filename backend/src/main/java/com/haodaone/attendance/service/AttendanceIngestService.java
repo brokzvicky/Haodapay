@@ -138,6 +138,7 @@ public class AttendanceIngestService {
 
         AttendanceRecord record = new AttendanceRecord();
         record.setEmployee(employee);
+        record.setEmployeeName(employee != null ? employee.getFullName() : "Unmapped (PIN " + devicePin + ")");
         record.setDeviceUserId(devicePin);
         record.setPunchTime(punchTime);
         record.setPunchType(resolvePunchType(statusCode, devicePin, punchTime));
