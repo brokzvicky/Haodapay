@@ -11,7 +11,7 @@ import Button from '../../components/ui/Button';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
 import { SkeletonText } from '../../components/ui/Skeleton';
-import { statusMeta, STATUS_META, EMPLOYMENT_TYPE_LABEL } from './statusMeta';
+import { statusMeta, STATUS_META, SELECTABLE_STATUSES, EMPLOYMENT_TYPE_LABEL } from './statusMeta';
 import { leaveStatusMeta } from '../leave/leaveStatusMeta';
 
 const TABS = [
@@ -89,7 +89,9 @@ export default function EmployeeProfile() {
               <>
                 <div className="position-fixed top-0 start-0 w-100 h-100" style={{ zIndex: 15 }} onClick={() => setStatusMenuOpen(false)} />
                 <div className="position-absolute end-0 mt-2 hz-surface" style={{ width: 200, zIndex: 20, padding: 6 }}>
-                  {Object.entries(STATUS_META).map(([key, val]) => (
+                  {SELECTABLE_STATUSES.map((key) => {
+                    const val = STATUS_META[key];
+                    return (
                     <button
                       key={key}
                       disabled={key === employee.status || changeStatus.isPending}
@@ -101,7 +103,8 @@ export default function EmployeeProfile() {
                         {val.label}
                       </Badge>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
