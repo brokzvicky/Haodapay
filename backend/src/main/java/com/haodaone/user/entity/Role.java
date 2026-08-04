@@ -28,7 +28,18 @@ public class Role extends BaseEntity {
     @Column(name = "system_defined", nullable = false)
     private boolean systemDefined = false;
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    /**
+     * EAGER, not LAZY: CustomUserPrincipal.getAuthorities() reads this on
+     * every single authenticated request (JwtAuthenticationFilter runs
+     * per-request, outside any @Transactional boundary, and
+     * loadUserByUsername() isn't transactional either) - so a LAZY
+     * collection here throws LazyInitializationException("no Session")
+     * on every request, which JwtAuthenticationFilter's catch-all swallows
+     * as "not authenticated", silently 401ing every protected endpoint.
+     * HaodaAsset's own Role entity already uses EAGER here for this exact
+     * reason.
+     */
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "role_permissions",
             joinColumns = @JoinColumn(name = "role_id"),
