@@ -8,11 +8,33 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface CandidateRepository extends JpaRepository<Candidate, Long> {
-    List<Candidate> findAllByJobOpeningIdAndDeletedFalseOrderByAppliedDateDesc(Long jobOpeningId);
+
+    @Query("""
+        SELECT c
+        FROM Candidate c
+        LEFT JOIN FETCH c.jobOpening
+        WHERE c.deleted = false
+        AND c.jobOpening.id = :jobOpeningId
+        ORDER BY c.appliedDate DESC
+        """)
+    List<Candidate> findAllByJobOpeningIdAndDeletedFalseOrderByAppliedDateDesc(
+            @Param("jobOpeningId") Long jobOpeningId);
+
+    @Query("""
+        SELECT c
+        FROM Candidate c
+        LEFT JOIN FETCH c.jobOpening
+        WHERE c.deleted = false
+        ORDER BY c.appliedDate DESC
+        """)
     List<Candidate> findAllByDeletedFalseOrderByAppliedDateDesc();
+
     long countByJobOpeningIdAndDeletedFalse(Long jobOpeningId);
+
     long countByJobOpeningIdAndStageAndDeletedFalse(Long jobOpeningId, String stage);
+
     long countByDeletedFalse();
+
     long countByStageAndDeletedFalse(String stage);
 
     @Query("select c from Candidate c where c.stage = 'HIRED' and c.deleted = false and year(c.updatedAt) = :year")
