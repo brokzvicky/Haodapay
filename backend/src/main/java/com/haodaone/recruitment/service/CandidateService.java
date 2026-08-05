@@ -264,11 +264,14 @@ public class CandidateService {
     }
 
     private Candidate findActiveOrThrow(Long id) {
-        Candidate candidate = candidateRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Candidate not found: " + id));
+        Candidate candidate = candidateRepository.findByIdWithJobOpening(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Candidate not found: " + id));
+
         if (candidate.isDeleted()) {
             throw new ResourceNotFoundException("Candidate not found: " + id);
         }
+
         return candidate;
     }
 }
