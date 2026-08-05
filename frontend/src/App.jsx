@@ -10,6 +10,8 @@ import Devices from './pages/attendance/Devices';
 import LeaveRequests from './pages/leave/LeaveRequests';
 import JobOpenings from './pages/recruitment/JobOpenings';
 import CandidatePipeline from './pages/recruitment/CandidatePipeline';
+import CareersList from './pages/careers/CareersList';
+import JobApply from './pages/careers/JobApply';
 import PerformanceHub from './pages/performance/PerformanceHub';
 import Reports from './pages/reports/Reports';
 import SettingsUsers from './pages/SettingsUsers';
@@ -23,6 +25,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/careers" element={<CareersList />} />
+      <Route path="/careers/:jobId" element={<JobApply />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>

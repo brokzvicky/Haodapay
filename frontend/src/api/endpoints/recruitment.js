@@ -8,13 +8,38 @@ export const jobOpeningsApi = {
 
 export const candidatesApi = {
   list: (jobOpeningId) => axiosClient.get('/api/candidates', { params: jobOpeningId ? { jobOpeningId } : {} }).then((res) => res.data),
+  get: (id) => axiosClient.get(`/api/candidates/${id}`).then((res) => res.data),
   create: (payload) => axiosClient.post('/api/candidates', payload).then((res) => res.data),
-  updateStage: (id, payload) => axiosClient.patch(`/api/candidates/${id}/stage`, payload).then((res) => res.data),
+  // decision: 'SHORTLISTED' | 'HOLD' | 'REJECTED', plus optional rating/remarks/rejectionReason
+  review: (id, payload) => axiosClient.patch(`/api/candidates/${id}/review`, payload).then((res) => res.data),
+  // targetStage: 'ROUND1' | 'ROUND2' | 'ROUND3' | 'HOLD' | 'REJECTED'
+  advance: (id, payload) => axiosClient.patch(`/api/candidates/${id}/advance`, payload).then((res) => res.data),
+  generateOffer: (id, payload) => axiosClient.post(`/api/candidates/${id}/generate-offer`, payload).then((res) => res.data),
+  acceptOffer: (id) => axiosClient.post(`/api/candidates/${id}/accept-offer`).then((res) => res.data),
 };
 
 export const interviewsApi = {
   byCandidate: (candidateId) => axiosClient.get(`/api/interviews/candidate/${candidateId}`).then((res) => res.data),
   upcoming: () => axiosClient.get('/api/interviews/upcoming').then((res) => res.data),
+  // roundNumber: 1 | 2 | 3
   schedule: (payload) => axiosClient.post('/api/interviews', payload).then((res) => res.data),
   submitFeedback: (id, payload) => axiosClient.patch(`/api/interviews/${id}/feedback`, payload).then((res) => res.data),
+};
+
+// Public, unauthenticated - the Careers page. Uses the same axiosClient
+// (it never forces a login redirect - only a real 401 from an authed
+// endpoint does that, and these endpoints never return one).
+export const careersApi = {
+  listOpenJobs: () => axiosClient.get('/api/careers/jobs').then((res) => res.data),
+  getJob: (id) => axiosClient.get(`/api/careers/jobs/${id}`).then((res) => res.data),
+  apply: (applicationFields, resumeFile) => {
+    const formData = new FormData();
+    formData.append('application', new Blob([JSON.stringify(applicationFields)], { type: 'application/json' }));
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    }
+    return axiosClient.post('/api/careers/apply', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((res) => res.data);
+  },
 };
