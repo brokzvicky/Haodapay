@@ -14,6 +14,8 @@ public class InterviewDTO {
     private Long interviewerId;
     private String interviewerName;
     private LocalDateTime scheduledAt;
+    private int roundNumber;
+    private String roundType;
     private String mode;
     private String status;
     private Integer rating;
@@ -25,6 +27,8 @@ public class InterviewDTO {
         dto.candidateId = i.getCandidate().getId();
         dto.candidateName = i.getCandidate().getFullName();
         dto.scheduledAt = i.getScheduledAt();
+        dto.roundNumber = i.getRoundNumber();
+        dto.roundType = i.getRoundType();
         dto.mode = i.getMode();
         dto.status = i.getStatus();
         dto.rating = i.getRating();
@@ -60,6 +64,14 @@ public class InterviewDTO {
         return scheduledAt;
     }
 
+    public int getRoundNumber() {
+        return roundNumber;
+    }
+
+    public String getRoundType() {
+        return roundType;
+    }
+
     public String getMode() {
         return mode;
     }
@@ -83,6 +95,10 @@ public class InterviewDTO {
 
         @NotNull(message = "Scheduled time is required")
         private LocalDateTime scheduledAt;
+
+        @Min(value = 1, message = "Round must be 1, 2, or 3")
+        @Max(value = 3, message = "Round must be 1, 2, or 3")
+        private int roundNumber = 1;
 
         private String mode = "VIDEO";
 
@@ -108,6 +124,14 @@ public class InterviewDTO {
 
         public void setScheduledAt(LocalDateTime scheduledAt) {
             this.scheduledAt = scheduledAt;
+        }
+
+        public int getRoundNumber() {
+            return roundNumber;
+        }
+
+        public void setRoundNumber(int roundNumber) {
+            this.roundNumber = roundNumber;
         }
 
         public String getMode() {

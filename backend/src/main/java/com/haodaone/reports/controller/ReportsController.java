@@ -36,7 +36,8 @@ public class ReportsController {
 
     private static final List<String> EMPLOYEE_STATUSES = List.of("Active", "On Leave", "Notice Period", "Resigned", "Terminated");
     private static final List<String> EMPLOYMENT_TYPES = List.of("FULL_TIME", "PART_TIME", "CONTRACT", "INTERN");
-    private static final List<String> CANDIDATE_STAGES = List.of("APPLIED", "SCREENING", "INTERVIEW", "OFFER", "HIRED", "REJECTED");
+    private static final List<String> CANDIDATE_STAGES = List.of(
+            "APPLIED", "SHORTLISTED", "HOLD", "ROUND1", "ROUND2", "ROUND3", "OFFERED", "HIRED", "REJECTED");
 
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;

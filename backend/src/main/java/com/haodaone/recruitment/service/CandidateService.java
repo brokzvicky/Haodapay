@@ -3,6 +3,9 @@ package com.haodaone.recruitment.service;
 import com.haodaone.audit.service.AuditLogService;
 import com.haodaone.common.exception.BadRequestException;
 import com.haodaone.common.exception.ResourceNotFoundException;
+import com.haodaone.employee.dto.CreateEmployeeRequest;
+import com.haodaone.employee.dto.EmployeeDetailDTO;
+import com.haodaone.employee.service.EmployeeService;
 import com.haodaone.recruitment.dto.CandidateDTO;
 import com.haodaone.recruitment.entity.Candidate;
 import com.haodaone.recruitment.entity.JobOpening;
@@ -10,25 +13,51 @@ import com.haodaone.recruitment.repository.CandidateRepository;
 import com.haodaone.recruitment.repository.JobOpeningRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
 public class CandidateService {
 
-    /** APPLIED -> SCREENING -> INTERVIEW -> OFFER -> HIRED, with REJECTED reachable from any non-terminal stage. */
-    private static final Set<String> VALID_STAGES = Set.of("APPLIED", "SCREENING", "INTERVIEW", "OFFER", "HIRED", "REJECTED");
+    /** Full pipeline vocabulary - see Candidate's class doc for the stage diagram. */
+    private static final Set<String> VALID_STAGES = Set.of(
+            "APPLIED", "SHORTLISTED", "HOLD", "ROUND1", "ROUND2", "ROUND3", "OFFERED", "HIRED", "REJECTED");
+
+    /** Decisions the initial HR review (on an APPLIED candidate) can make. */
+    private static final Set<String> REVIEW_DECISIONS = Set.of("SHORTLISTED", "HOLD", "REJECTED");
+
+    /**
+     * Every other controlled transition. REJECTED is reachable from any
+     * key here (enforced separately below, not repeated in every set) -
+     * this map only needs to list the "positive" moves.
+     */
+    private static final Map<String, Set<String>> ALLOWED_ADVANCES = Map.of(
+            "SHORTLISTED", Set.of("ROUND1", "HOLD"),
+            "HOLD", Set.of("SHORTLISTED", "ROUND1", "ROUND2", "ROUND3"),
+            "ROUND1", Set.of("ROUND2", "HOLD"),
+            "ROUND2", Set.of("ROUND3", "HOLD"),
+            "ROUND3", Set.of("HOLD"));
+
+    private static final Set<String> TERMINAL_STAGES = Set.of("HIRED", "REJECTED");
 
     private final CandidateRepository candidateRepository;
     private final JobOpeningRepository jobOpeningRepository;
+    private final ResumeStorageService resumeStorageService;
+    private final EmployeeService employeeService;
     private final AuditLogService auditLogService;
 
     public CandidateService(CandidateRepository candidateRepository, JobOpeningRepository jobOpeningRepository,
+                             ResumeStorageService resumeStorageService, EmployeeService employeeService,
                              AuditLogService auditLogService) {
         this.candidateRepository = candidateRepository;
         this.jobOpeningRepository = jobOpeningRepository;
+        this.resumeStorageService = resumeStorageService;
+        this.employeeService = employeeService;
         this.auditLogService = auditLogService;
     }
 
@@ -39,6 +68,16 @@ public class CandidateService {
         return candidates.stream().map(CandidateDTO::from).toList();
     }
 
+    public CandidateDTO getById(Long id) {
+        return CandidateDTO.from(findActiveOrThrow(id));
+    }
+
+    /** Resume storage key isn't exposed on CandidateDTO (only hasResume/resumeOriginalName are) - the download endpoint needs the raw key. */
+    public String getResumeKey(Long id) {
+        return findActiveOrThrow(id).getResumeFileKey();
+    }
+
+    /** Manual add by HR (e.g. a referral) - no resume file, optionally a resumeUrl link. */
     @Transactional
     public CandidateDTO create(CandidateDTO.CreateRequest request) {
         JobOpening opening = jobOpeningRepository.findById(request.getJobOpeningId())
@@ -50,8 +89,10 @@ public class CandidateService {
         candidate.setEmail(request.getEmail());
         candidate.setPhone(request.getPhone());
         candidate.setJobOpening(opening);
-        candidate.setSource(request.getSource());
+        candidate.setSource(request.getSource() != null ? request.getSource() : "Manual Entry");
         candidate.setResumeUrl(request.getResumeUrl());
+        candidate.setExperienceYears(request.getExperienceYears());
+        candidate.setSkills(request.getSkills());
         candidate.setNotes(request.getNotes());
         candidate.setAppliedDate(LocalDate.now());
         candidate.setStage("APPLIED");
@@ -62,26 +103,172 @@ public class CandidateService {
         return CandidateDTO.from(saved);
     }
 
+    /**
+     * Public, unauthenticated application from the Careers page. Rejects
+     * applications to a job that isn't currently OPEN, even if the id is
+     * still guessable/bookmarked from when it was.
+     */
     @Transactional
-    public CandidateDTO updateStage(Long id, CandidateDTO.StageUpdateRequest request) {
-        if (!VALID_STAGES.contains(request.getStage())) {
-            throw new BadRequestException("Unknown stage: " + request.getStage() + ". Must be one of " + VALID_STAGES);
+    public CandidateDTO apply(CandidateDTO.PublicApplicationRequest request, MultipartFile resume) {
+        JobOpening opening = jobOpeningRepository.findById(request.getJobOpeningId())
+                .orElseThrow(() -> new BadRequestException("This job opening no longer exists."));
+        if (!"OPEN".equals(opening.getStatus())) {
+            throw new BadRequestException("This job opening is no longer accepting applications.");
         }
-        Candidate candidate = candidateRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Candidate not found: " + id));
 
-        String oldStage = candidate.getStage();
-        candidate.setStage(request.getStage());
-        if (request.getOfferAmount() != null) {
-            candidate.setOfferAmount(request.getOfferAmount());
-        }
-        if (request.getExpectedJoiningDate() != null) {
-            candidate.setExpectedJoiningDate(request.getExpectedJoiningDate());
+        Candidate candidate = new Candidate();
+        candidate.setFirstName(request.getFirstName());
+        candidate.setLastName(request.getLastName());
+        candidate.setEmail(request.getEmail());
+        candidate.setPhone(request.getPhone());
+        candidate.setJobOpening(opening);
+        candidate.setSource("Careers Page");
+        candidate.setExperienceYears(request.getExperienceYears());
+        candidate.setSkills(request.getSkills());
+        candidate.setNotes(request.getNotes());
+        candidate.setAppliedDate(LocalDate.now());
+        candidate.setStage("APPLIED");
+
+        if (resume != null && !resume.isEmpty()) {
+            String key = resumeStorageService.store(resume);
+            candidate.setResumeFileKey(key);
+            candidate.setResumeOriginalName(resume.getOriginalFilename());
         }
 
         Candidate saved = candidateRepository.save(candidate);
-        auditLogService.log("Candidate", saved.getId(), "STAGE_CHANGE",
-                "stage: " + oldStage + " -> " + request.getStage() + " (" + saved.getFullName() + ")");
+        auditLogService.log("Candidate", saved.getId(), "CREATE",
+                "'" + saved.getFullName() + "' applied via Careers page for '" + opening.getTitle() + "'");
         return CandidateDTO.from(saved);
+    }
+
+    /** HR's initial screening decision on an APPLIED candidate: shortlist, hold, or reject. */
+    @Transactional
+    public CandidateDTO review(Long id, CandidateDTO.ReviewRequest request) {
+        if (!REVIEW_DECISIONS.contains(request.getDecision())) {
+            throw new BadRequestException("Review decision must be one of " + REVIEW_DECISIONS);
+        }
+        Candidate candidate = findActiveOrThrow(id);
+        if (!"APPLIED".equals(candidate.getStage())) {
+            throw new BadRequestException("Only an APPLIED candidate can be reviewed - this candidate is already " + candidate.getStage() + ".");
+        }
+
+        applyDecision(candidate, request.getDecision(), request.getRating(), request.getRemarks(), request.getRejectionReason());
+
+        Candidate saved = candidateRepository.save(candidate);
+        auditLogService.log("Candidate", saved.getId(), "REVIEW",
+                "'" + saved.getFullName() + "' reviewed -> " + request.getDecision()
+                        + (request.getRating() != null ? " (rating " + request.getRating() + "/5)" : ""));
+        return CandidateDTO.from(saved);
+    }
+
+    /** Round-by-round pipeline advancement (or hold/reject) once past the initial review. */
+    @Transactional
+    public CandidateDTO advance(Long id, CandidateDTO.AdvanceStageRequest request) {
+        Candidate candidate = findActiveOrThrow(id);
+        String from = candidate.getStage();
+        String to = request.getTargetStage();
+
+        if (!VALID_STAGES.contains(to)) {
+            throw new BadRequestException("Unknown stage: " + to);
+        }
+        if (TERMINAL_STAGES.contains(from)) {
+            throw new BadRequestException("Candidate is already " + from + " - no further pipeline changes are possible.");
+        }
+        boolean isRejection = "REJECTED".equals(to);
+        boolean isAllowedAdvance = ALLOWED_ADVANCES.getOrDefault(from, Set.of()).contains(to);
+        if (!isRejection && !isAllowedAdvance) {
+            throw new BadRequestException("Can't move a candidate from " + from + " to " + to + ".");
+        }
+
+        applyDecision(candidate, to, null, request.getRemarks(), request.getRejectionReason());
+
+        Candidate saved = candidateRepository.save(candidate);
+        auditLogService.log("Candidate", saved.getId(), "STAGE_CHANGE",
+                "'" + saved.getFullName() + "': " + from + " -> " + to);
+        return CandidateDTO.from(saved);
+    }
+
+    /** After Round 3 clears, HR generates the offer. */
+    @Transactional
+    public CandidateDTO generateOffer(Long id, CandidateDTO.OfferRequest request) {
+        Candidate candidate = findActiveOrThrow(id);
+        if (!"ROUND3".equals(candidate.getStage())) {
+            throw new BadRequestException("An offer can only be generated after the candidate has cleared Round 3 (Final/Management Interview).");
+        }
+
+        candidate.setOfferAmount(request.getOfferAmount());
+        candidate.setExpectedJoiningDate(request.getExpectedJoiningDate());
+        candidate.setOfferGeneratedAt(LocalDateTime.now());
+        candidate.setStage("OFFERED");
+
+        Candidate saved = candidateRepository.save(candidate);
+        auditLogService.log("Candidate", saved.getId(), "OFFER_GENERATED",
+                "Offer generated for '" + saved.getFullName() + "': " + request.getOfferAmount()
+                        + ", joining " + request.getExpectedJoiningDate());
+        return CandidateDTO.from(saved);
+    }
+
+    /**
+     * Candidate accepts the offer (recorded by HR - this app has no
+     * candidate-facing login/portal). Automatically creates the employee
+     * profile and starts onboarding, reusing the same EmployeeService the
+     * Employees module itself uses - so the resulting record is a normal
+     * employee in every other respect (appears in the directory, gets an
+     * employee code, etc.), not a special "recruited" record type.
+     */
+    @Transactional
+    public CandidateDTO acceptOffer(Long id) {
+        Candidate candidate = findActiveOrThrow(id);
+        if (!"OFFERED".equals(candidate.getStage())) {
+            throw new BadRequestException("This candidate doesn't have an active offer to accept.");
+        }
+
+        CreateEmployeeRequest employeeRequest = new CreateEmployeeRequest();
+        employeeRequest.setFirstName(candidate.getFirstName());
+        employeeRequest.setLastName(candidate.getLastName());
+        employeeRequest.setEmail(candidate.getEmail());
+        employeeRequest.setPhone(candidate.getPhone());
+        employeeRequest.setDateOfJoining(candidate.getExpectedJoiningDate() != null
+                ? candidate.getExpectedJoiningDate() : LocalDate.now());
+        employeeRequest.setEmploymentType(candidate.getJobOpening().getEmploymentType());
+        if (candidate.getJobOpening().getDepartment() != null) {
+            employeeRequest.setDepartmentId(candidate.getJobOpening().getDepartment().getId());
+        }
+        if (candidate.getJobOpening().getDesignation() != null) {
+            employeeRequest.setDesignationId(candidate.getJobOpening().getDesignation().getId());
+        }
+
+        EmployeeDetailDTO createdEmployee = employeeService.create(employeeRequest);
+
+        candidate.setOfferAcceptedAt(LocalDateTime.now());
+        candidate.setCreatedEmployeeId(createdEmployee.getId());
+        candidate.setStage("HIRED");
+
+        Candidate saved = candidateRepository.save(candidate);
+        auditLogService.log("Candidate", saved.getId(), "OFFER_ACCEPTED",
+                "'" + saved.getFullName() + "' accepted the offer - onboarded as employee " + createdEmployee.getEmployeeCode());
+        return CandidateDTO.from(saved);
+    }
+
+    private void applyDecision(Candidate candidate, String newStage, Integer rating, String remarks, String rejectionReason) {
+        candidate.setStage(newStage);
+        if (rating != null) {
+            candidate.setRating(rating);
+        }
+        if (remarks != null) {
+            candidate.setRemarks(remarks);
+        }
+        if ("REJECTED".equals(newStage)) {
+            candidate.setRejectionReason(rejectionReason); // optional, per the workflow spec
+        }
+    }
+
+    private Candidate findActiveOrThrow(Long id) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidate not found: " + id));
+        if (candidate.isDeleted()) {
+            throw new ResourceNotFoundException("Candidate not found: " + id);
+        }
+        return candidate;
     }
 }

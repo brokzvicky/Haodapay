@@ -4,13 +4,21 @@ import com.haodaone.common.entity.BaseEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Offer management is folded into this entity (offerAmount/
- * expectedJoiningDate) rather than a separate Offer entity - at this
- * phase's scope an offer is just terminal state on the candidate's
+ * expectedJoiningDate/offerGeneratedAt/offerAcceptedAt) rather than a
+ * separate Offer entity - an offer is terminal state on the candidate's
  * pipeline, not a multi-revision negotiation record. Split it out if/when
  * offer letters, approvals, or revision history are needed.
+ *
+ * Pipeline: APPLIED -> SHORTLISTED (or REJECTED/HOLD) -> ROUND1 -> ROUND2
+ * -> ROUND3 -> OFFERED -> OFFER_ACCEPTED -> HIRED, with REJECTED reachable
+ * from any non-terminal stage. See CandidateService.VALID_STAGES /
+ * ALLOWED_TRANSITIONS for the enforced graph, and the Interview entity
+ * (roundNumber/roundType) for the per-round interviewer/rating/feedback
+ * history that goes with ROUND1/ROUND2/ROUND3.
  */
 @Entity
 @Table(name = "candidate")
@@ -32,25 +40,68 @@ public class Candidate extends BaseEntity {
     @JoinColumn(name = "job_opening_id", nullable = false)
     private JobOpening jobOpening;
 
-    /** e.g. "Referral", "LinkedIn", "Job Board" - free text by design, not a fixed list. */
+    /** e.g. "Referral", "LinkedIn", "Job Board", "Careers Page" - free text by design, not a fixed list. */
     @Column(length = 100)
     private String source;
 
+    /**
+     * External resume link, for candidates added manually by HR (e.g. a
+     * Drive/LinkedIn link) rather than through the public application
+     * form. Mutually optional alongside resumeFileKey below - a given
+     * candidate typically has one or the other, not both.
+     */
     @Column(name = "resume_url", length = 500)
     private String resumeUrl;
 
-    /** APPLIED, SCREENING, INTERVIEW, OFFER, HIRED, REJECTED */
+    /** Storage key for an uploaded resume file (see ResumeStorageService) - set when the candidate applied via the public Careers page. */
+    @Column(name = "resume_file_key", length = 300)
+    private String resumeFileKey;
+
+    /** Original uploaded filename, kept only for display (e.g. "Download resume.pdf") - never used to build the storage path. */
+    @Column(name = "resume_original_name", length = 255)
+    private String resumeOriginalName;
+
+    /** Years of experience as stated on the application. */
+    @Column(name = "experience_years")
+    private Double experienceYears;
+
+    /** Free-text skills as stated on the application (comma-separated by convention, not enforced). */
+    @Column(length = 500)
+    private String skills;
+
+    /** APPLIED, SHORTLISTED, HOLD, ROUND1, ROUND2, ROUND3, OFFERED, OFFER_ACCEPTED, HIRED, REJECTED */
     @Column(nullable = false, length = 20)
     private String stage = "APPLIED";
 
     @Column(name = "applied_date", nullable = false)
     private LocalDate appliedDate;
 
+    /** 1-5, set during the HR screening review (separate from any individual interview round's rating). */
+    private Integer rating;
+
+    /** HR's screening remarks - separate from interview feedback, which lives on each Interview row. */
+    @Column(length = 1000)
+    private String remarks;
+
+    /** Optional - only meaningful when stage = REJECTED. */
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
     @Column(name = "offer_amount")
     private Double offerAmount;
 
     @Column(name = "expected_joining_date")
     private LocalDate expectedJoiningDate;
+
+    @Column(name = "offer_generated_at")
+    private LocalDateTime offerGeneratedAt;
+
+    @Column(name = "offer_accepted_at")
+    private LocalDateTime offerAcceptedAt;
+
+    /** Set once OFFER_ACCEPTED triggers auto-onboarding - the employee.id this candidate became. */
+    @Column(name = "created_employee_id")
+    private Long createdEmployeeId;
 
     @Column(length = 1000)
     private String notes;
@@ -115,6 +166,38 @@ public class Candidate extends BaseEntity {
         this.resumeUrl = resumeUrl;
     }
 
+    public String getResumeFileKey() {
+        return resumeFileKey;
+    }
+
+    public void setResumeFileKey(String resumeFileKey) {
+        this.resumeFileKey = resumeFileKey;
+    }
+
+    public String getResumeOriginalName() {
+        return resumeOriginalName;
+    }
+
+    public void setResumeOriginalName(String resumeOriginalName) {
+        this.resumeOriginalName = resumeOriginalName;
+    }
+
+    public Double getExperienceYears() {
+        return experienceYears;
+    }
+
+    public void setExperienceYears(Double experienceYears) {
+        this.experienceYears = experienceYears;
+    }
+
+    public String getSkills() {
+        return skills;
+    }
+
+    public void setSkills(String skills) {
+        this.skills = skills;
+    }
+
     public String getStage() {
         return stage;
     }
@@ -131,6 +214,30 @@ public class Candidate extends BaseEntity {
         this.appliedDate = appliedDate;
     }
 
+    public Integer getRating() {
+        return rating;
+    }
+
+    public void setRating(Integer rating) {
+        this.rating = rating;
+    }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
     public Double getOfferAmount() {
         return offerAmount;
     }
@@ -145,6 +252,30 @@ public class Candidate extends BaseEntity {
 
     public void setExpectedJoiningDate(LocalDate expectedJoiningDate) {
         this.expectedJoiningDate = expectedJoiningDate;
+    }
+
+    public LocalDateTime getOfferGeneratedAt() {
+        return offerGeneratedAt;
+    }
+
+    public void setOfferGeneratedAt(LocalDateTime offerGeneratedAt) {
+        this.offerGeneratedAt = offerGeneratedAt;
+    }
+
+    public LocalDateTime getOfferAcceptedAt() {
+        return offerAcceptedAt;
+    }
+
+    public void setOfferAcceptedAt(LocalDateTime offerAcceptedAt) {
+        this.offerAcceptedAt = offerAcceptedAt;
+    }
+
+    public Long getCreatedEmployeeId() {
+        return createdEmployeeId;
+    }
+
+    public void setCreatedEmployeeId(Long createdEmployeeId) {
+        this.createdEmployeeId = createdEmployeeId;
     }
 
     public String getNotes() {

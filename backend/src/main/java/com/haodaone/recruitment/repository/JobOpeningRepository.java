@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface JobOpeningRepository extends JpaRepository<JobOpening, Long> {
     List<JobOpening> findAllByDeletedFalseOrderByPostedDateDesc();
+    List<JobOpening> findAllByStatusAndDeletedFalseOrderByPostedDateDesc(String status);
     long countByStatusAndDeletedFalse(String status);
 }
