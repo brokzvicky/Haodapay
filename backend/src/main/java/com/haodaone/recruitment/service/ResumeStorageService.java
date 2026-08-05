@@ -65,10 +65,14 @@ public class ResumeStorageService {
         String key = UUID.randomUUID() + "." + extension;
 
         try {
-            Path dir = Paths.get(resumeDir);
+            // Resolve to an absolute path up front - resumeDir is configured as a
+            // *relative* path by default (see app.upload.resume-dir), and comparing
+            // a relative `dir` against an absolute target below always failed the
+            // containment check, rejecting every upload regardless of the file.
+            Path dir = Paths.get(resumeDir).toAbsolutePath().normalize();
             Files.createDirectories(dir);
             Path target = dir.resolve(key).normalize();
-            if (!target.getParent().equals(dir.toAbsolutePath().normalize()) && !target.startsWith(dir.toAbsolutePath().normalize())) {
+            if (!target.getParent().equals(dir)) {
                 // Defense in depth: key is a fresh UUID we just generated, so this
                 // can never actually trigger, but a storage layer that skips path
                 // containment checks is exactly how key-traversal bugs slip in later.
