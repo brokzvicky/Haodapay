@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom';
+import Logo from '../../components/brand/Logo';
 
 export default function PublicLayout({ children }) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--hz-bg, #f7f8fa)' }}>
       <header style={{ borderBottom: '1px solid var(--hz-border)', background: 'var(--hz-surface, #fff)' }}>
-        <div className="container py-3">
-          <Link to="/careers" className="text-decoration-none d-inline-flex align-items-center gap-2">
-            <span style={{ fontSize: 'var(--hz-text-lg)', fontWeight: 700, color: 'var(--hz-text-primary)' }}>HaodaOne</span>
-            <span style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-muted)' }}>Careers</span>
+        <div className="container py-3 d-flex align-items-center justify-content-between">
+          <Link to="/careers" className="text-decoration-none">
+            <Logo tagline="Careers" />
+          </Link>
+          <Link to="/" className="text-decoration-none" style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>
+            &larr; Back to HaodaOne
           </Link>
         </div>
       </header>

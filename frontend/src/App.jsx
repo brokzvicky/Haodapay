@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
+import Landing from './pages/landing/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import EmployeeList from './pages/employees/EmployeeList';
@@ -24,13 +25,14 @@ import NotFound from './pages/NotFound';
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/careers" element={<CareersList />} />
       <Route path="/careers/:jobId" element={<JobApply />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="employees" element={<EmployeeList />} />
           <Route path="employees/:id" element={<EmployeeProfile />} />
           <Route path="attendance" element={<AttendanceList />} />

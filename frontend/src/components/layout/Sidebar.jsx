@@ -13,11 +13,12 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
+import Logo from '../brand/Logo';
 
 const NAV_SECTIONS = [
   {
     label: null,
-    items: [{ to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true }],
+    items: [{ to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true }],
   },
   {
     label: 'Workforce',
@@ -68,21 +69,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         className="d-flex align-items-center gap-2 px-3"
         style={{ height: 'var(--hz-topbar-height)', borderBottom: '1px solid var(--hz-border)' }}
       >
-        <div
-          className="d-flex align-items-center justify-content-center flex-shrink-0"
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 9,
-            background: 'linear-gradient(135deg, var(--hz-primary-600), var(--hz-accent-500))',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 14,
-          }}
-        >
-          H1
-        </div>
-        {!collapsed && <span style={{ fontWeight: 700, fontSize: 'var(--hz-text-lg)' }}>HaodaOne</span>}
+        <Logo variant={collapsed ? 'mark' : 'full'} size={32} />
       </div>
 
       <nav className="flex-grow-1 overflow-auto py-3" style={{ minHeight: 0 }}>

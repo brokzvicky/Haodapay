@@ -1,0 +1,280 @@
+/**
+ * Landing page only. Scoped under .hz-landing so nothing here leaks into
+ * the authenticated product, which keeps its own visual language untouched.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap');
+
+.hz-landing {
+  --hz-font-display: 'Space Grotesk', var(--hz-font-sans);
+  overflow-x: hidden;
+}
+
+.hz-landing h1,
+.hz-landing h2,
+.hz-landing h3,
+.hz-landing .hz-display {
+  font-family: var(--hz-font-display);
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Header ---------- */
+.hz-landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--hz-transition-base), box-shadow var(--hz-transition-base);
+}
+.hz-landing-header.is-scrolled {
+  border-bottom-color: var(--hz-border);
+  box-shadow: var(--hz-shadow-sm);
+}
+.hz-landing-nav-link {
+  color: var(--hz-text-secondary);
+  font-size: var(--hz-text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  padding: 8px 4px;
+  position: relative;
+  transition: color var(--hz-transition-fast);
+}
+.hz-landing-nav-link:hover {
+  color: var(--hz-text-primary);
+}
+
+/* ---------- Hero ---------- */
+.hz-hero {
+  position: relative;
+  background: radial-gradient(120% 140% at 15% 0%, #4f46e5 0%, #3730a3 46%, #241e63 78%, #1c1750 100%);
+  color: #fff;
+  overflow: hidden;
+}
+.hz-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.hz-hero::after {
+  content: '';
+  position: absolute;
+  width: 620px;
+  height: 620px;
+  right: -180px;
+  top: -160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.35), transparent 70%);
+  pointer-events: none;
+}
+.hz-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--hz-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c7d2fe;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 6px 14px;
+  border-radius: var(--hz-radius-full);
+}
+
+.hz-btn-hero-primary {
+  background: #ffffff;
+  color: var(--hz-primary-700);
+  border: none;
+  font-weight: 600;
+  border-radius: var(--hz-radius-md);
+  padding: 12px 22px;
+  transition: transform var(--hz-transition-fast), box-shadow var(--hz-transition-fast);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.35);
+}
+.hz-btn-hero-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -6px rgba(0, 0, 0, 0.4);
+  color: var(--hz-primary-700);
+}
+.hz-btn-hero-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+  border-radius: var(--hz-radius-md);
+  padding: 12px 22px;
+  transition: background var(--hz-transition-fast), transform var(--hz-transition-fast);
+}
+.hz-btn-hero-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ---------- Hero illustration ---------- */
+.hz-hero-art {
+  position: relative;
+  min-height: 380px;
+}
+.hz-hero-art-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--hz-radius-xl);
+  backdrop-filter: blur(6px);
+  padding: 28px;
+  animation: hz-float-slow 7s ease-in-out infinite;
+}
+.hz-hero-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.97);
+  color: var(--hz-text-primary);
+  border-radius: var(--hz-radius-md);
+  padding: 10px 14px;
+  box-shadow: var(--hz-shadow-xl);
+  font-size: var(--hz-text-sm);
+  font-weight: 600;
+  animation: hz-float 6s ease-in-out infinite;
+}
+.hz-hero-chip .hz-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@keyframes hz-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes hz-float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hz-hero-art-panel,
+  .hz-hero-chip {
+    animation: none;
+  }
+}
+
+/* ---------- Section scaffolding ---------- */
+.hz-section {
+  padding: 96px 0;
+}
+.hz-section-sm {
+  padding: 72px 0;
+}
+@media (max-width: 767.98px) {
+  .hz-section {
+    padding: 64px 0;
+  }
+  .hz-section-sm {
+    padding: 48px 0;
+  }
+}
+.hz-eyebrow {
+  display: inline-block;
+  font-size: var(--hz-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hz-primary-600);
+  margin-bottom: 12px;
+}
+
+/* ---------- About pillars ---------- */
+.hz-pillar {
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-lg);
+  background: var(--hz-bg-surface);
+  padding: 24px;
+  height: 100%;
+  transition: transform var(--hz-transition-base), box-shadow var(--hz-transition-base), border-color var(--hz-transition-base);
+}
+.hz-pillar:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--hz-shadow-lg);
+  border-color: var(--hz-primary-200);
+}
+.hz-pillar-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--hz-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* ---------- Careers cards ---------- */
+.hz-job-card {
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-lg);
+  background: var(--hz-bg-surface);
+  padding: 22px;
+  height: 100%;
+  transition: transform var(--hz-transition-base), box-shadow var(--hz-transition-base), border-color var(--hz-transition-base);
+}
+.hz-job-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--hz-shadow-lg);
+  border-color: var(--hz-primary-200);
+}
+
+/* ---------- Contact ---------- */
+.hz-contact-panel {
+  background: var(--hz-bg-surface);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-xl);
+  box-shadow: var(--hz-shadow-lg);
+}
+
+/* ---------- Footer ---------- */
+.hz-landing-footer {
+  background: var(--hz-gray-900);
+  color: var(--hz-gray-400);
+}
+.hz-landing-footer a {
+  color: var(--hz-gray-400);
+  text-decoration: none;
+  font-size: var(--hz-text-sm);
+  transition: color var(--hz-transition-fast);
+}
+.hz-landing-footer a:hover {
+  color: #fff;
+}
+.hz-landing-footer h6 {
+  color: var(--hz-gray-200);
+  font-size: var(--hz-text-sm);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ---------- Reveal-on-scroll ---------- */
+.hz-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.hz-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hz-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

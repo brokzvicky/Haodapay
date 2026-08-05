@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ShieldCheck, Users, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
+import Logo from '../components/brand/Logo';
 
 export default function Login() {
   const { login } = useAuth();
@@ -41,15 +42,9 @@ export default function Login() {
           color: '#fff',
         }}
       >
-        <div className="d-flex align-items-center gap-2">
-          <div
-            className="d-flex align-items-center justify-content-center"
-            style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.15)', fontWeight: 700 }}
-          >
-            H1
-          </div>
-          <span style={{ fontWeight: 700, fontSize: 'var(--hz-text-xl)' }}>HaodaOne</span>
-        </div>
+        <Link to="/" className="text-decoration-none">
+          <Logo tone="onDark" size={36} wordmarkSize="var(--hz-text-xl)" />
+        </Link>
 
         <div>
           <h1 style={{ fontSize: 'var(--hz-text-4xl)', fontWeight: 700, lineHeight: 1.15, marginBottom: 16 }}>
@@ -73,14 +68,10 @@ export default function Login() {
       {/* Form panel */}
       <div className="d-flex flex-column justify-content-center align-items-center flex-grow-1 p-4">
         <div style={{ width: '100%', maxWidth: 380 }}>
-          <div className="d-flex d-lg-none align-items-center gap-2 mb-4">
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--hz-primary-600)', color: '#fff', fontWeight: 700 }}
-            >
-              H1
-            </div>
-            <span style={{ fontWeight: 700, fontSize: 'var(--hz-text-lg)' }}>HaodaOne</span>
+          <div className="d-flex d-lg-none mb-4">
+            <Link to="/" className="text-decoration-none">
+              <Logo size={32} />
+            </Link>
           </div>
 
           <h2 style={{ fontSize: 'var(--hz-text-2xl)', fontWeight: 700, marginBottom: 4 }}>Welcome back</h2>
