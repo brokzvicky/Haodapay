@@ -49,6 +49,15 @@ public class InterviewController {
         return interviewService.submitFeedback(id, request);
     }
 
+    /** Re-sends the manager/candidate assignment emails for an already-scheduled interview - see the "Resend Invite" button on the candidate detail view. */
+    @PostMapping("/{id}/resend-invite")
+    @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
+    public ResponseEntity<Void> resendInvite(@PathVariable Long id, @RequestBody(required = false) InterviewDTO.ResendInviteRequest request) {
+        InterviewDTO.ResendInviteRequest body = request != null ? request : new InterviewDTO.ResendInviteRequest();
+        interviewService.resendInvite(id, body.isToManager(), body.isToCandidate());
+        return ResponseEntity.noContent().build();
+    }
+
     /**
      * Manager/final-round decision (technical/communication/overall
      * rating + remarks + Reject/Select-for-Final/Approve-for-Offer).

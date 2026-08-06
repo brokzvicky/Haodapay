@@ -33,13 +33,16 @@ public class InterviewService {
     private final CandidateRepository candidateRepository;
     private final EmployeeRepository employeeRepository;
     private final AuditLogService auditLogService;
+    private final EmailService emailService;
 
     public InterviewService(InterviewRepository interviewRepository, CandidateRepository candidateRepository,
-                             EmployeeRepository employeeRepository, AuditLogService auditLogService) {
+                             EmployeeRepository employeeRepository, AuditLogService auditLogService,
+                             EmailService emailService) {
         this.interviewRepository = interviewRepository;
         this.candidateRepository = candidateRepository;
         this.employeeRepository = employeeRepository;
         this.auditLogService = auditLogService;
+        this.emailService = emailService;
     }
 
     /**
@@ -79,6 +82,44 @@ public class InterviewService {
         return interviewRepository.findAllByInterviewer_IdAndDeletedFalseOrderByScheduledAtDesc(me.getId()).stream()
                 .map(InterviewDTO::fromWithCandidateContext)
                 .toList();
+    }
+
+    /**
+     * Re-sends the assignment emails for an already-scheduled interview -
+     * to the manager, the candidate, or both - without HR needing to dig
+     * up and re-paste the Google Meet link by hand. Reuses the exact same
+     * EmailService methods assignManagerRound() calls when the interview
+     * is first created, so the resend is identical in content to the
+     * original invite (just re-triggered).
+     */
+    @Transactional(readOnly = true)
+    public void resendInvite(Long id, boolean toManager, boolean toCandidate) {
+        Interview interview = interviewRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Interview not found: " + id));
+
+        if (interview.getMeetingLink() == null || interview.getMeetingLink().isBlank()) {
+            throw new BadRequestException("This interview has no Google Meet link on file to resend.");
+        }
+        if (!toManager && !toCandidate) {
+            throw new BadRequestException("Choose at least one recipient to resend the invite to.");
+        }
+        if (interview.getInterviewer() == null) {
+            throw new BadRequestException("This interview has no assigned interviewer to resend to.");
+        }
+
+        Candidate candidate = interview.getCandidate();
+        Employee interviewer = interview.getInterviewer();
+
+        if (toManager) {
+            emailService.sendManagerAssignmentEmail(candidate, interview, interviewer);
+        }
+        if (toCandidate) {
+            emailService.sendCandidateManagerRoundEmail(candidate, interview, interviewer);
+        }
+
+        auditLogService.log("Interview", interview.getId(), "INVITE_RESENT",
+                "Resent round " + interview.getRoundNumber() + " invite for '" + candidate.getFullName() + "'"
+                        + " to" + (toManager ? " manager" : "") + (toCandidate ? " candidate" : ""));
     }
 
     /**

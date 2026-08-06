@@ -298,4 +298,26 @@ public class InterviewDTO {
             this.decision = decision;
         }
     }
+
+    /** Both default true - the frontend's single "Resend Invite" button posts an empty body to resend to both. */
+    public static class ResendInviteRequest {
+        private boolean toManager = true;
+        private boolean toCandidate = true;
+
+        public boolean isToManager() {
+            return toManager;
+        }
+
+        public void setToManager(boolean toManager) {
+            this.toManager = toManager;
+        }
+
+        public boolean isToCandidate() {
+            return toCandidate;
+        }
+
+        public void setToCandidate(boolean toCandidate) {
+            this.toCandidate = toCandidate;
+        }
+    }
 }
