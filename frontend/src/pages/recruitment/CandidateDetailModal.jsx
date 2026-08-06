@@ -30,12 +30,27 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
 
   const [action, setAction] = useState(null); // 'review' | 'advance' | 'schedule' | 'offer'
   const [feedbackFor, setFeedbackFor] = useState(null);
+  // Tracks resend state per interview id so each row's button shows its own "Sending…" / "Sent" independently
+  const [resendStatus, setResendStatus] = useState({});
 
   const acceptOffer = useMutation({
     mutationFn: () => candidatesApi.acceptOffer(candidateId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
       queryClient.invalidateQueries({ queryKey: ['candidate', candidateId] });
+    },
+  });
+
+  const resendInvite = useMutation({
+    mutationFn: (interviewId) => interviewsApi.resendInvite(interviewId),
+    onMutate: (interviewId) => setResendStatus((s) => ({ ...s, [interviewId]: 'sending' })),
+    onSuccess: (_data, interviewId) => {
+      setResendStatus((s) => ({ ...s, [interviewId]: 'sent' }));
+      setTimeout(() => setResendStatus((s) => ({ ...s, [interviewId]: undefined })), 3000);
+    },
+    onError: (_err, interviewId) => {
+      setResendStatus((s) => ({ ...s, [interviewId]: 'error' }));
+      setTimeout(() => setResendStatus((s) => ({ ...s, [interviewId]: undefined })), 4000);
     },
   });
 
@@ -149,8 +164,25 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                           </div>
                         )}
                         {iv.status === 'SCHEDULED' && (
-                          <div className="mt-1">
-                            <Button size="sm" variant="secondary" onClick={() => setFeedbackFor(iv)}>Add Feedback</Button>
+                          <div className="mt-1 d-flex flex-column align-items-end gap-1">
+                            <div className="d-flex gap-1">
+                              {iv.meetingLink && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => resendInvite.mutate(iv.id)}
+                                  loading={resendStatus[iv.id] === 'sending'}
+                                >
+                                  Resend Invite
+                                </Button>
+                              )}
+                              <Button size="sm" variant="secondary" onClick={() => setFeedbackFor(iv)}>Add Feedback</Button>
+                            </div>
+                            {resendStatus[iv.id] === 'sent' && (
+                              <span style={{ fontSize: 11, color: 'var(--hz-success-600, #16a34a)' }}>Invite resent</span>
+                            )}
+                            {resendStatus[iv.id] === 'error' && (
+                              <span style={{ fontSize: 11, color: 'var(--hz-danger-600)' }}>Couldn't resend - try again</span>
+                            )}
                           </div>
                         )}
                       </div>

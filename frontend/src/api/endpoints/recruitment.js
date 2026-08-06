@@ -31,6 +31,8 @@ export const interviewsApi = {
   // Round 2/3 outcome: { technicalRating?, communicationRating?, overallRating, remarks?, decision }
   // decision for round 2: 'REJECTED' | 'SELECT_FOR_FINAL'; round 3: 'REJECTED' | 'APPROVED_FOR_OFFER'
   submitDecision: (id, payload) => axiosClient.patch(`/api/interviews/${id}/decision`, payload).then((res) => res.data),
+  // Resends the manager+candidate assignment emails (Google Meet link etc.) for an already-scheduled interview
+  resendInvite: (id) => axiosClient.post(`/api/interviews/${id}/resend-invite`).then((res) => res.data),
 };
 
 // Public, unauthenticated - the Careers page. Uses the same axiosClient
