@@ -5,15 +5,16 @@ import { careersApi } from '../../api/endpoints/recruitment';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import { SkeletonCard } from '../../components/ui/Skeleton';
-import PublicLayout from './PublicLayout';
 
 export default function CareersList() {
   const { data: jobs, isLoading, isError, refetch } = useQuery({ queryKey: ['careers-jobs'], queryFn: careersApi.listOpenJobs });
 
   return (
-    <PublicLayout>
+    <section className="hz-section" style={{ background: 'var(--hz-bg-canvas)' }}>
+      <div className="container" style={{ maxWidth: 860 }}>
       <div className="text-center mb-5">
-        <h1 style={{ fontSize: 'var(--hz-text-2xl)', fontWeight: 700 }}>Open Positions</h1>
+        <span className="hz-eyebrow">Careers</span>
+        <h1 style={{ fontSize: 'var(--hz-text-3xl)', fontWeight: 700, marginTop: 10 }}>Open Positions</h1>
         <p className="text-secondary-hz" style={{ fontSize: 'var(--hz-text-base)', maxWidth: 560, margin: '8px auto 0' }}>
           We're growing - take a look at the roles we're currently hiring for.
         </p>
@@ -62,6 +63,7 @@ export default function CareersList() {
             ))}
         </div>
       )}
-    </PublicLayout>
+      </div>
+    </section>
   );
 }

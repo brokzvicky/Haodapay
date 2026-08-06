@@ -1,7 +1,10 @@
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
-import Landing from './pages/landing/Landing';
+import PublicSiteLayout from './pages/landing/PublicSiteLayout';
+import Home from './pages/landing/Home';
+import About from './pages/landing/About';
+import Contact from './pages/landing/Contact';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import EmployeeList from './pages/employees/EmployeeList';
@@ -26,9 +29,14 @@ import NotFound from './pages/NotFound';
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route element={<PublicSiteLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/careers" element={<CareersList />} />
+        <Route path="/contact" element={<Contact />} />
+      </Route>
+
       <Route path="/login" element={<Login />} />
-      <Route path="/careers" element={<CareersList />} />
       <Route path="/careers/:jobId" element={<JobApply />} />
 
       <Route element={<ProtectedRoute />}>

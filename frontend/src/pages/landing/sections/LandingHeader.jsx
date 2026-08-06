@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import Logo from '../../../components/brand/Logo';
 
 const NAV_LINKS = [
-  { href: '#home', label: 'Home' },
-  { href: '#about', label: 'About' },
-  { href: '#careers', label: 'Careers' },
-  { href: '#contact', label: 'Contact' },
+  { to: '/', label: 'Home', end: true },
+  { to: '/about', label: 'About' },
+  { to: '/careers', label: 'Careers' },
+  { to: '/contact', label: 'Contact' },
 ];
 
 export default function LandingHeader() {
@@ -23,24 +23,23 @@ export default function LandingHeader() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  function handleNavClick(e, href) {
-    e.preventDefault();
-    setMobileOpen(false);
-    document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
   return (
-    <header id="home" className={`hz-landing-header ${scrolled ? 'is-scrolled' : ''}`}>
+    <header className={`hz-landing-header ${scrolled ? 'is-scrolled' : ''}`}>
       <div className="container d-flex align-items-center justify-content-between" style={{ height: 72 }}>
-        <a href="#home" onClick={(e) => handleNavClick(e, '#home')}>
+        <Link to="/">
           <Logo />
-        </a>
+        </Link>
 
         <nav className="d-none d-lg-flex align-items-center gap-4">
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="hz-landing-nav-link" onClick={(e) => handleNavClick(e, link.href)}>
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => `hz-landing-nav-link ${isActive ? 'is-active' : ''}`}
+            >
               {link.label}
-            </a>
+            </NavLink>
           ))}
         </nav>
 
@@ -67,14 +66,15 @@ export default function LandingHeader() {
         <div className="d-lg-none border-top" style={{ borderColor: 'var(--hz-border)', background: '#fff' }}>
           <div className="container d-flex flex-column py-3 gap-1">
             {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="hz-landing-nav-link py-2"
-                onClick={(e) => handleNavClick(e, link.href)}
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className={({ isActive }) => `hz-landing-nav-link py-2 ${isActive ? 'is-active' : ''}`}
+                onClick={() => setMobileOpen(false)}
               >
                 {link.label}
-              </a>
+              </NavLink>
             ))}
             <Link to="/careers" className="hz-landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
               View Openings

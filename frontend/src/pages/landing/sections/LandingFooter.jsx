@@ -2,10 +2,6 @@ import { Link } from 'react-router-dom';
 import { Linkedin, Twitter } from 'lucide-react';
 import Logo from '../../../components/brand/Logo';
 
-function scrollTo(href) {
-  document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 export default function LandingFooter() {
   return (
     <footer className="hz-landing-footer">
@@ -26,9 +22,7 @@ export default function LandingFooter() {
             <h6>Product</h6>
             <ul className="list-unstyled d-flex flex-column gap-2">
               <li>
-                <a href="#about" onClick={(e) => { e.preventDefault(); scrollTo('#about'); }}>
-                  Modules
-                </a>
+                <Link to="/about">Modules</Link>
               </li>
               <li>
                 <Link to="/login">Sign in</Link>
@@ -40,17 +34,13 @@ export default function LandingFooter() {
             <h6>Company</h6>
             <ul className="list-unstyled d-flex flex-column gap-2">
               <li>
-                <a href="#about" onClick={(e) => { e.preventDefault(); scrollTo('#about'); }}>
-                  About
-                </a>
+                <Link to="/about">About</Link>
               </li>
               <li>
                 <Link to="/careers">Careers</Link>
               </li>
               <li>
-                <a href="#contact" onClick={(e) => { e.preventDefault(); scrollTo('#contact'); }}>
-                  Contact
-                </a>
+                <Link to="/contact">Contact</Link>
               </li>
             </ul>
           </div>
@@ -78,7 +68,7 @@ export default function LandingFooter() {
 function SocialIcon({ icon: Icon }) {
   return (
     <a
-      href="#home"
+      href="#"
       onClick={(e) => e.preventDefault()}
       className="d-flex align-items-center justify-content-center"
       style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,0.06)' }}

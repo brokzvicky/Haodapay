@@ -50,7 +50,7 @@ export default function AboutSection() {
   const heading = useReveal();
 
   return (
-    <section id="about" className="hz-section" style={{ background: 'var(--hz-bg-canvas)' }}>
+    <section className="hz-section" style={{ background: 'var(--hz-bg-canvas)' }}>
       <div className="container">
         <div ref={heading.ref} className={`${heading.className} text-center mx-auto mb-5`} style={{ maxWidth: 640 }}>
           <span className="hz-eyebrow">About HaodaOne</span>

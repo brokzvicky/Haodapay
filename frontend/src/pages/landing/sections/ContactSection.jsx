@@ -24,7 +24,7 @@ export default function ContactSection() {
   }
 
   return (
-    <section id="contact" className="hz-section-sm" style={{ background: 'var(--hz-bg-canvas)' }}>
+    <section className="hz-section-sm" style={{ background: 'var(--hz-bg-canvas)' }}>
       <div className="container">
         <div ref={reveal.ref} className={reveal.className}>
           <div className="hz-contact-panel p-4 p-lg-5">

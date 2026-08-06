@@ -1,8 +1,5 @@
+import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
-
-function scrollTo(href) {
-  document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
 
 export default function HeroSection() {
   return (
@@ -24,12 +21,12 @@ export default function HeroSection() {
             </p>
 
             <div className="d-flex flex-wrap gap-3">
-              <button className="hz-btn-hero-primary d-inline-flex align-items-center gap-2" onClick={() => scrollTo('#contact')}>
+              <Link to="/contact" className="hz-btn-hero-primary d-inline-flex align-items-center gap-2">
                 Request Demo <ArrowRight size={16} />
-              </button>
-              <button className="hz-btn-hero-secondary" onClick={() => scrollTo('#careers')}>
+              </Link>
+              <Link to="/careers" className="hz-btn-hero-secondary">
                 View Careers
-              </button>
+              </Link>
             </div>
 
             <div className="d-flex align-items-center gap-4 mt-5 flex-wrap" style={{ opacity: 0.7 }}>

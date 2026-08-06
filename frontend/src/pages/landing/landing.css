@@ -44,6 +44,31 @@
 .hz-landing-nav-link:hover {
   color: var(--hz-text-primary);
 }
+.hz-landing-nav-link.is-active {
+  color: var(--hz-primary-700);
+}
+.hz-landing-nav-link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--hz-primary-600);
+}
+/* On the stacked mobile menu an underline reads oddly - use a tinted
+   background pill instead so the active page is still obvious. */
+@media (max-width: 991.98px) {
+  .hz-landing-nav-link.is-active {
+    background: var(--hz-primary-50);
+    border-radius: var(--hz-radius-md);
+    padding-left: 10px;
+  }
+  .hz-landing-nav-link.is-active::after {
+    display: none;
+  }
+}
 
 /* ---------- Hero ---------- */
 .hz-hero {
@@ -87,6 +112,12 @@
   border-radius: var(--hz-radius-full);
 }
 
+.hz-btn-hero-primary,
+.hz-btn-hero-secondary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
 .hz-btn-hero-primary {
   background: #ffffff;
   color: var(--hz-primary-700);
