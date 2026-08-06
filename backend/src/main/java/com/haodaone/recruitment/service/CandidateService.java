@@ -86,6 +86,19 @@ public class CandidateService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * @Transactional(readOnly = true) is required here, not optional: with
+     * spring.jpa.open-in-view=false (correctly set - see application.properties),
+     * the Hibernate session normally closes the instant the repository call
+     * returns. Candidate.jobOpening is FetchType.LAZY, and CandidateDTO.from()
+     * calls jobOpening.getTitle() - a real field, not the FK id, so Hibernate
+     * must hit the DB to initialize that proxy. Without an open session at
+     * that point, it throws LazyInitializationException, which
+     * GlobalExceptionHandler's catch-all turns into the generic 500 "Something
+     * went wrong" the frontend shows. Keeping the transaction open for the
+     * whole method (including the DTO mapping) fixes that permanently.
+     */
+    @Transactional(readOnly = true)
     public List<CandidateDTO> listAll(Long jobOpeningId) {
         List<Candidate> candidates = jobOpeningId != null
                 ? candidateRepository.findAllByJobOpeningIdAndDeletedFalseOrderByAppliedDateDesc(jobOpeningId)
@@ -93,6 +106,8 @@ public class CandidateService {
         return candidates.stream().map(CandidateDTO::from).toList();
     }
 
+    /** See listAll()'s javadoc - same lazy-jobOpening issue applies here. */
+    @Transactional(readOnly = true)
     public CandidateDTO getById(Long id) {
         return CandidateDTO.from(findActiveOrThrow(id));
     }

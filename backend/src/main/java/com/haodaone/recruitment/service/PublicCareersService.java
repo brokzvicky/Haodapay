@@ -28,12 +28,22 @@ public class PublicCareersService {
         this.candidateService = candidateService;
     }
 
+    /**
+     * @Transactional(readOnly = true) is required: PublicJobOpeningDTO.from()
+     * calls department.getName() and designation.getTitle(), both lazy
+     * relations (see CandidateService.listAll()'s javadoc for the full
+     * explanation). This is the public Careers page - the same bug here is
+     * user-facing to job applicants, not just HR.
+     */
+    @Transactional(readOnly = true)
     public List<PublicJobOpeningDTO> listOpenJobs() {
         return jobOpeningRepository.findAllByStatusAndDeletedFalseOrderByPostedDateDesc("OPEN").stream()
                 .map(PublicJobOpeningDTO::from)
                 .toList();
     }
 
+    /** Same lazy-relation issue as listOpenJobs() above. */
+    @Transactional(readOnly = true)
     public PublicJobOpeningDTO getOpenJob(Long id) {
         JobOpening opening = jobOpeningRepository.findById(id)
                 .filter(o -> !o.isDeleted() && "OPEN".equals(o.getStatus()))

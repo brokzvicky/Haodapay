@@ -42,19 +42,37 @@ public class InterviewService {
         this.auditLogService = auditLogService;
     }
 
+    /**
+     * @Transactional(readOnly = true) is required: InterviewDTO.from() calls
+     * candidate.getFullName() and interviewer.getFullName(), both lazy
+     * relations (see CandidateService.listAll()'s javadoc for the full
+     * explanation of why this throws without an open session).
+     */
+    @Transactional(readOnly = true)
     public List<InterviewDTO> byCandidate(Long candidateId) {
         return interviewRepository.findAllByCandidateIdAndDeletedFalseOrderByScheduledAtDesc(candidateId).stream()
                 .map(InterviewDTO::from)
                 .toList();
     }
 
+    /** Same lazy-relation issue as byCandidate() above. */
+    @Transactional(readOnly = true)
     public List<InterviewDTO> upcoming() {
         return interviewRepository.findAllByStatusOrderByScheduledAtAsc("SCHEDULED").stream()
                 .map(InterviewDTO::from)
                 .toList();
     }
 
-    /** Manager Portal: interviews assigned to the currently logged-in user, resolved via their linked Employee record. */
+    /**
+     * Manager Portal: interviews assigned to the currently logged-in user,
+     * resolved via their linked Employee record.
+     *
+     * @Transactional(readOnly = true) is required here even more than the
+     * other two methods above: fromWithCandidateContext() reaches through
+     * candidate.getJobOpening().getTitle() - two lazy hops deep - so this
+     * is the method most likely to blow up without an open session.
+     */
+    @Transactional(readOnly = true)
     public List<InterviewDTO> myInterviews() {
         Employee me = currentEmployee()
                 .orElseThrow(() -> new BadRequestException("Your account isn't linked to an employee profile, so you have no assigned interviews."));

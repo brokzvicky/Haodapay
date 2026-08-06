@@ -37,6 +37,15 @@ public class JobOpeningService {
         this.auditLogService = auditLogService;
     }
 
+    /**
+     * @Transactional(readOnly = true) is required: toEnrichedDTO() ->
+     * JobOpeningDTO.from() calls department.getName() and
+     * designation.getTitle(), both lazy relations. This job was only
+     * "working" by coincidence whenever a listing's department/designation
+     * happened to be null (see CandidateService.listAll()'s javadoc for the
+     * full explanation - same root cause).
+     */
+    @Transactional(readOnly = true)
     public List<JobOpeningDTO> listAll() {
         return jobOpeningRepository.findAllByDeletedFalseOrderByPostedDateDesc().stream()
                 .map(this::toEnrichedDTO)
