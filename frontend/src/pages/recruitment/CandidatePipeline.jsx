@@ -15,12 +15,12 @@ import CandidateDetailModal from './CandidateDetailModal';
 const STAGE_VARIANT = {
   APPLIED: 'neutral', SHORTLISTED: 'info', HOLD: 'warning',
   ROUND1: 'primary', ROUND2: 'primary', ROUND3: 'primary',
-  OFFERED: 'warning', HIRED: 'success', REJECTED: 'danger',
+  OFFERED: 'warning', OFFER_LETTER_SENT: 'primary', HIRED: 'success', REJECTED: 'danger',
 };
 const STAGE_LABEL = {
   APPLIED: 'Applied', SHORTLISTED: 'Shortlisted', HOLD: 'On Hold',
   ROUND1: 'Round 1', ROUND2: 'Round 2', ROUND3: 'Round 3',
-  OFFERED: 'Offered', HIRED: 'Hired', REJECTED: 'Rejected',
+  OFFERED: 'Offered', OFFER_LETTER_SENT: 'Offer Letter Sent', HIRED: 'Hired', REJECTED: 'Rejected',
 };
 
 export default function CandidatePipeline() {

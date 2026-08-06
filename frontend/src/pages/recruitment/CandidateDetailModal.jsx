@@ -11,11 +11,12 @@ import AssignManagerModal from './AssignManagerModal';
 import ScheduleInterviewModal from './ScheduleInterviewModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 import GenerateOfferModal from './GenerateOfferModal';
+import OfferLetterPanel from './OfferLetterPanel';
 
 const STAGE_VARIANT = {
   APPLIED: 'neutral', SHORTLISTED: 'info', HOLD: 'warning',
   ROUND1: 'primary', ROUND2: 'primary', ROUND3: 'primary',
-  OFFERED: 'warning', HIRED: 'success', REJECTED: 'danger',
+  OFFERED: 'warning', OFFER_LETTER_SENT: 'primary', HIRED: 'success', REJECTED: 'danger',
 };
 const ROUND_LABEL = { 1: 'Round 1 · HR Interview', 2: 'Round 2 · Hiring Manager', 3: 'Round 3 · Final / Management' };
 
@@ -174,6 +175,11 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
               </div>
             )}
 
+            {/* Upload / send the offer letter document - shown once an offer has been generated */}
+            {['OFFERED', 'OFFER_LETTER_SENT'].includes(candidate.stage) && (
+              <OfferLetterPanel candidate={candidate} />
+            )}
+
             {/* Contextual actions */}
             <div className="d-flex flex-wrap gap-2 pt-2" style={{ borderTop: '1px solid var(--hz-border)' }}>
               {candidate.stage === 'APPLIED' && <Button onClick={() => setAction('review')}>Review Application</Button>}
@@ -196,7 +202,7 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                 <Button onClick={() => setAction('offer')}>Generate Offer</Button>
               )}
 
-              {candidate.stage === 'OFFERED' && (
+              {candidate.stage === 'OFFER_LETTER_SENT' && (
                 <Button onClick={() => acceptOffer.mutate()} loading={acceptOffer.isPending}>Mark Offer Accepted &amp; Onboard</Button>
               )}
             </div>

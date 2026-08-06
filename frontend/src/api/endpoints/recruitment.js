@@ -18,6 +18,18 @@ export const candidatesApi = {
   acceptOffer: (id) => axiosClient.post(`/api/candidates/${id}/accept-offer`).then((res) => res.data),
   // "Select for Manager Round": { managerEmployeeId, scheduledAt, meetingLink, instructions? }
   assignManager: (id, payload) => axiosClient.post(`/api/candidates/${id}/assign-manager`, payload).then((res) => res.data),
+  // Offer letter upload/send workflow - see GenerateOfferModal (generateOffer, above) for the offer-terms step.
+  uploadOfferLetter: (id, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axiosClient.post(`/api/candidates/${id}/offer-letter`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((res) => res.data);
+  },
+  downloadOfferLetter: (id) => axiosClient.get(`/api/candidates/${id}/offer-letter`, { responseType: 'blob' }),
+  // Streamed inline (Content-Disposition: inline) rather than a plain URL, since the endpoint needs the same auth header as everything else - callers open the resulting blob in a new tab.
+  previewOfferLetter: (id) => axiosClient.get(`/api/candidates/${id}/offer-letter/preview`, { responseType: 'blob' }),
+  sendOfferLetter: (id) => axiosClient.post(`/api/candidates/${id}/send-offer-letter`).then((res) => res.data),
 };
 
 export const interviewsApi = {
