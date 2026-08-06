@@ -25,7 +25,7 @@ $font-weight-bold: 600;
 // ---- Radii - soft, rounded, never sharp corners ----
 $border-radius: 0.625rem;
 $border-radius-sm: 0.375rem;
-$border-radius-lg: 0.875rem;
+$border-radius-lg: 1rem;
 $border-radius-xl: 1.25rem;
 $border-radius-pill: 50rem;
 
@@ -55,7 +55,7 @@ $input-focus-box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 
 // ---- Cards ----
 $card-border-color: #e2e8f0;
-$card-border-radius: 0.875rem;
+$card-border-radius: 1rem;
 $card-spacer-y: 1.25rem;
 $card-spacer-x: 1.25rem;
 
@@ -81,3 +81,47 @@ $spacers: (
 );
 
 @import 'bootstrap/scss/bootstrap';
+
+// ==========================================================
+// Post-Bootstrap polish - small, deliberate upgrades layered on top of
+// the stock component output so buttons/inputs feel premium rather than
+// "default Bootstrap." Kept minimal on purpose.
+// ==========================================================
+
+.btn {
+  transition: transform var(--hz-transition-fast), box-shadow var(--hz-transition-base), background var(--hz-transition-base), filter var(--hz-transition-base);
+}
+
+.btn-primary {
+  background: var(--hz-gradient-primary);
+  border: none;
+  box-shadow: var(--hz-shadow-primary);
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px -8px rgba(79, 70, 229, 0.55);
+}
+.btn-primary:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+
+.btn-outline-secondary,
+.btn-light {
+  border-color: var(--hz-border);
+}
+.btn-outline-secondary:hover,
+.btn-light:hover {
+  transform: translateY(-1px);
+}
+
+.form-control,
+.form-select {
+  transition: border-color var(--hz-transition-fast), box-shadow var(--hz-transition-fast), background var(--hz-transition-fast);
+}
+.form-control:focus,
+.form-select:focus {
+  background: #fff;
+}

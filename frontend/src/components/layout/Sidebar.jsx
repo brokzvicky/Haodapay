@@ -92,13 +92,14 @@ export default function Sidebar({ collapsed, onToggle }) {
                 end={item.end}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `d-flex align-items-center gap-3 mx-2 px-3 py-2 mb-1 text-decoration-none rounded-3 ${
+                  `hz-sidebar-link d-flex align-items-center gap-3 mx-2 px-3 py-2 mb-1 text-decoration-none rounded-3 ${
                     isActive ? 'hz-nav-active' : 'hz-nav-inactive'
                   }`
                 }
                 style={({ isActive }) => ({
-                  color: isActive ? 'var(--hz-primary-700)' : 'var(--hz-text-secondary)',
-                  background: isActive ? 'var(--hz-primary-50)' : 'transparent',
+                  color: isActive ? '#fff' : 'var(--hz-text-secondary)',
+                  background: isActive ? 'var(--hz-gradient-primary)' : 'transparent',
+                  boxShadow: isActive ? 'var(--hz-shadow-primary)' : 'none',
                   fontWeight: isActive ? 600 : 500,
                   fontSize: 'var(--hz-text-sm)',
                 })}
@@ -113,8 +114,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       <button
         onClick={onToggle}
-        className="btn btn-light d-flex align-items-center justify-content-center border-0 m-2"
-        style={{ borderRadius: 9 }}
+        className="hz-sidebar-toggle d-flex align-items-center justify-content-center border-0 m-2"
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}

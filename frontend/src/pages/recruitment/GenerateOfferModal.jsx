@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Send } from 'lucide-react';
+import { X } from 'lucide-react';
 import { candidatesApi } from '../../api/endpoints/recruitment';
 import Button from '../../components/ui/Button';
 
@@ -57,11 +57,6 @@ export default function GenerateOfferModal({ candidate, onClose }) {
           <div className="mb-3">
             <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Expected Joining Date *</label>
             <input type="date" className="form-control" value={expectedJoiningDate} onChange={(e) => setExpectedJoiningDate(e.target.value)} required />
-          </div>
-
-          <div className="mb-3 px-3 py-2 d-flex align-items-start gap-2" style={{ background: 'var(--hz-bg-subtle, #f7f8fa)', borderRadius: 8, fontSize: 12, color: 'var(--hz-text-secondary)' }}>
-            <Send size={14} style={{ marginTop: 2, flexShrink: 0 }} />
-            <span>Generating the offer emails it to the candidate automatically.</span>
           </div>
 
           <div className="d-flex justify-content-end gap-2 mt-4">

@@ -25,26 +25,26 @@ export default function Topbar() {
           <input
             type="search"
             placeholder="Search employees, requests, reports…"
-            className="form-control ps-5"
+            className="form-control ps-5 hz-search-input"
             style={{ background: 'var(--hz-gray-50)', border: '1px solid var(--hz-border)' }}
           />
         </div>
       </div>
 
       <div className="d-flex align-items-center gap-2">
-        <button className="btn btn-light border-0 position-relative d-flex align-items-center justify-content-center" style={{ width: 38, height: 38, borderRadius: 10 }}>
+        <button className="hz-icon-btn position-relative d-flex align-items-center justify-content-center" style={{ width: 38, height: 38 }}>
           <Bell size={18} />
           <span
             className="position-absolute rounded-circle"
-            style={{ width: 8, height: 8, background: 'var(--hz-danger-500)', top: 8, right: 9 }}
+            style={{ width: 8, height: 8, background: 'var(--hz-danger-500)', top: 8, right: 9, boxShadow: '0 0 0 2px var(--hz-bg-surface)' }}
           />
         </button>
 
         <div className="position-relative">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="btn btn-light border-0 d-flex align-items-center gap-2 px-2"
-            style={{ borderRadius: 10 }}
+            className="hz-icon-btn d-flex align-items-center gap-2 px-2"
+            style={{ borderRadius: 10, width: 'auto', height: 44 }}
           >
             <Avatar name={user?.fullName} size="sm" />
             <div className="d-none d-md-flex flex-column align-items-start lh-1">

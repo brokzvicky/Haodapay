@@ -97,16 +97,22 @@
   /* ---- Radii ---- */
   --hz-radius-sm: 0.375rem;
   --hz-radius-md: 0.625rem;
-  --hz-radius-lg: 0.875rem;
+  --hz-radius-lg: 1rem;
   --hz-radius-xl: 1.25rem;
   --hz-radius-full: 9999px;
 
   /* ---- Shadows (soft, layered - not harsh drop shadows) ---- */
   --hz-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --hz-shadow-md: 0 2px 8px -2px rgba(15, 23, 42, 0.08), 0 1px 3px -1px rgba(15, 23, 42, 0.06);
-  --hz-shadow-lg: 0 8px 24px -4px rgba(15, 23, 42, 0.10), 0 2px 8px -2px rgba(15, 23, 42, 0.06);
-  --hz-shadow-xl: 0 16px 40px -8px rgba(15, 23, 42, 0.14);
+  --hz-shadow-md: 0 4px 12px -3px rgba(15, 23, 42, 0.09), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --hz-shadow-lg: 0 12px 28px -6px rgba(15, 23, 42, 0.12), 0 4px 10px -4px rgba(15, 23, 42, 0.08);
+  --hz-shadow-xl: 0 20px 48px -10px rgba(15, 23, 42, 0.16);
   --hz-shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.18);
+  --hz-shadow-primary: 0 10px 24px -8px rgba(79, 70, 229, 0.45);
+
+  /* ---- Brand gradients ---- */
+  --hz-gradient-primary: linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #4338ca 100%);
+  --hz-gradient-accent: linear-gradient(135deg, #0ea5a4 0%, #0d9488 100%);
+  --hz-gradient-surface: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0) 100%);
 
   /* ---- Layout ---- */
   --hz-sidebar-width: 264px;
@@ -116,6 +122,7 @@
   /* ---- Motion ---- */
   --hz-transition-fast: 120ms ease;
   --hz-transition-base: 200ms ease;
+  --hz-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 [data-theme='dark'] {
@@ -130,7 +137,9 @@
   --hz-text-muted: #64748b;
 
   --hz-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --hz-shadow-md: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
-  --hz-shadow-lg: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
-  --hz-shadow-xl: 0 16px 40px -8px rgba(0, 0, 0, 0.55);
+  --hz-shadow-md: 0 4px 12px -3px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --hz-shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.5);
+  --hz-shadow-xl: 0 20px 48px -10px rgba(0, 0, 0, 0.6);
+  --hz-shadow-primary: 0 10px 26px -8px rgba(99, 102, 241, 0.55);
+  --hz-gradient-surface: linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 100%);
 }
