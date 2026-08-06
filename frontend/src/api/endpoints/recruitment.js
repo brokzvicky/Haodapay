@@ -16,14 +16,21 @@ export const candidatesApi = {
   advance: (id, payload) => axiosClient.patch(`/api/candidates/${id}/advance`, payload).then((res) => res.data),
   generateOffer: (id, payload) => axiosClient.post(`/api/candidates/${id}/generate-offer`, payload).then((res) => res.data),
   acceptOffer: (id) => axiosClient.post(`/api/candidates/${id}/accept-offer`).then((res) => res.data),
+  // "Select for Manager Round": { managerEmployeeId, scheduledAt, meetingLink, instructions? }
+  assignManager: (id, payload) => axiosClient.post(`/api/candidates/${id}/assign-manager`, payload).then((res) => res.data),
 };
 
 export const interviewsApi = {
   byCandidate: (candidateId) => axiosClient.get(`/api/interviews/candidate/${candidateId}`).then((res) => res.data),
   upcoming: () => axiosClient.get('/api/interviews/upcoming').then((res) => res.data),
+  // Manager Portal: interviews assigned to the current logged-in user
+  my: () => axiosClient.get('/api/interviews/my').then((res) => res.data),
   // roundNumber: 1 | 2 | 3
   schedule: (payload) => axiosClient.post('/api/interviews', payload).then((res) => res.data),
   submitFeedback: (id, payload) => axiosClient.patch(`/api/interviews/${id}/feedback`, payload).then((res) => res.data),
+  // Round 2/3 outcome: { technicalRating?, communicationRating?, overallRating, remarks?, decision }
+  // decision for round 2: 'REJECTED' | 'SELECT_FOR_FINAL'; round 3: 'REJECTED' | 'APPROVED_FOR_OFFER'
+  submitDecision: (id, payload) => axiosClient.patch(`/api/interviews/${id}/decision`, payload).then((res) => res.data),
 };
 
 // Public, unauthenticated - the Careers page. Uses the same axiosClient

@@ -15,7 +15,7 @@ const ALLOWED_ADVANCES = {
     { value: 'ROUND2', label: 'Resume - Round 2' },
     { value: 'ROUND3', label: 'Resume - Round 3' },
   ],
-  ROUND1: [{ value: 'ROUND2', label: 'Advance to Round 2 (Hiring Manager)' }, { value: 'HOLD', label: 'Put on Hold' }],
+  ROUND1: [{ value: 'HOLD', label: 'Put on Hold' }],
   ROUND2: [{ value: 'ROUND3', label: 'Advance to Round 3 (Final/Management)' }, { value: 'HOLD', label: 'Put on Hold' }],
   ROUND3: [{ value: 'HOLD', label: 'Put on Hold' }],
 };

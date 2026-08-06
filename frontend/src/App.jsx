@@ -11,6 +11,7 @@ import Devices from './pages/attendance/Devices';
 import LeaveRequests from './pages/leave/LeaveRequests';
 import JobOpenings from './pages/recruitment/JobOpenings';
 import CandidatePipeline from './pages/recruitment/CandidatePipeline';
+import MyInterviews from './pages/recruitment/MyInterviews';
 import CareersList from './pages/careers/CareersList';
 import JobApply from './pages/careers/JobApply';
 import PerformanceHub from './pages/performance/PerformanceHub';
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="leave" element={<LeaveRequests />} />
           <Route path="recruitment" element={<JobOpenings />} />
           <Route path="recruitment/:jobOpeningId" element={<CandidatePipeline />} />
+          <Route path="my-interviews" element={<MyInterviews />} />
           <Route path="performance" element={<PerformanceHub />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings/users" element={<SettingsUsers />} />

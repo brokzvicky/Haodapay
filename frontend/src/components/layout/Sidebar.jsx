@@ -5,6 +5,7 @@ import {
   Clock,
   CalendarDays,
   Briefcase,
+  CalendarClock,
   TrendingUp,
   FileBarChart,
   ShieldCheck,
@@ -32,6 +33,7 @@ const NAV_SECTIONS = [
     label: 'Talent',
     items: [
       { to: '/recruitment', icon: Briefcase, label: 'Recruitment' },
+      { to: '/my-interviews', icon: CalendarClock, label: 'My Interviews' },
       { to: '/performance', icon: TrendingUp, label: 'Performance' },
     ],
   },

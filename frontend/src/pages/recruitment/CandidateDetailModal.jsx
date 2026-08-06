@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import ReviewCandidateModal from './ReviewCandidateModal';
 import AdvanceCandidateModal from './AdvanceCandidateModal';
+import AssignManagerModal from './AssignManagerModal';
 import ScheduleInterviewModal from './ScheduleInterviewModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 import GenerateOfferModal from './GenerateOfferModal';
@@ -127,6 +128,16 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                           {new Date(iv.scheduledAt).toLocaleString()} {iv.interviewerName ? `· ${iv.interviewerName}` : ''}
                         </div>
                         {iv.feedback && <div style={{ fontSize: 12, color: 'var(--hz-text-secondary)', marginTop: 4 }}>{iv.feedback}</div>}
+                        {iv.meetingLink && (
+                          <div style={{ fontSize: 12, marginTop: 4 }}>
+                            <a href={iv.meetingLink} target="_blank" rel="noreferrer">{iv.meetingLink}</a>
+                          </div>
+                        )}
+                        {iv.decision && (
+                          <div style={{ fontSize: 12, marginTop: 4 }}>
+                            <Badge variant={iv.decision === 'REJECTED' ? 'danger' : 'success'}>{iv.decision.replaceAll('_', ' ')}</Badge>
+                          </div>
+                        )}
                       </div>
                       <div className="text-end">
                         <Badge variant={iv.status === 'COMPLETED' ? 'success' : 'neutral'}>{iv.status}</Badge>
@@ -168,7 +179,13 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
               {candidate.stage === 'APPLIED' && <Button onClick={() => setAction('review')}>Review Application</Button>}
 
               {['SHORTLISTED', 'HOLD', 'ROUND1', 'ROUND2', 'ROUND3'].includes(candidate.stage) && (
-                <Button variant="secondary" onClick={() => setAction('advance')}>Update Stage</Button>
+                <Button variant="secondary" onClick={() => setAction('advance')}>
+                  {candidate.stage === 'ROUND1' ? 'Reject / Hold' : 'Update Stage'}
+                </Button>
+              )}
+
+              {candidate.stage === 'ROUND1' && (
+                <Button onClick={() => setAction('assign-manager')}>Select for Manager Round</Button>
               )}
 
               {['ROUND1', 'ROUND2', 'ROUND3'].includes(candidate.stage) && !currentRoundInterview && (
@@ -189,6 +206,7 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
 
       {action === 'review' && <ReviewCandidateModal candidate={candidate} onClose={() => setAction(null)} />}
       {action === 'advance' && <AdvanceCandidateModal candidate={candidate} onClose={() => setAction(null)} />}
+      {action === 'assign-manager' && <AssignManagerModal candidate={candidate} onClose={() => setAction(null)} />}
       {action === 'schedule' && <ScheduleInterviewModal candidate={candidate} onClose={() => setAction(null)} />}
       {action === 'offer' && <GenerateOfferModal candidate={candidate} onClose={() => setAction(null)} />}
       {feedbackFor && <InterviewFeedbackModal interview={feedbackFor} candidateId={candidateId} onClose={() => setFeedbackFor(null)} />}
