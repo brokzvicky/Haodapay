@@ -50,11 +50,18 @@ public class CandidateController {
         return candidateService.review(id, request);
     }
 
-    /** Round-by-round advancement (or hold/reject) once past the initial review. */
+    /** Round-by-round advancement (or hold/reject) once past the initial review. Also how HR records Reject/Hold after the HR interview - "Select for Manager Round" instead goes through /assign-manager below, since it needs scheduling details. */
     @PatchMapping("/{id}/advance")
     @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
     public CandidateDTO advance(@PathVariable Long id, @Valid @RequestBody CandidateDTO.AdvanceStageRequest request) {
         return candidateService.advance(id, request);
+    }
+
+    /** "Select for Manager Round": assigns the hiring manager + schedule, advances the candidate to ROUND2, and emails both parties. */
+    @PostMapping("/{id}/assign-manager")
+    @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
+    public CandidateDTO assignManagerRound(@PathVariable Long id, @Valid @RequestBody CandidateDTO.AssignManagerRequest request) {
+        return candidateService.assignManagerRound(id, request);
     }
 
     /** After Round 3 (final/management interview) clears. */

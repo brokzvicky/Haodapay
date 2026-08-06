@@ -14,6 +14,8 @@ import com.haodaone.org.entity.Team;
 import com.haodaone.org.repository.DepartmentRepository;
 import com.haodaone.org.repository.DesignationRepository;
 import com.haodaone.org.repository.TeamRepository;
+import com.haodaone.user.entity.User;
+import com.haodaone.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +35,16 @@ public class EmployeeService {
     private final DesignationRepository designationRepository;
     private final TeamRepository teamRepository;
     private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
 
     public EmployeeService(EmployeeRepository employeeRepository, DepartmentRepository departmentRepository,
                             DesignationRepository designationRepository, TeamRepository teamRepository,
-                            AuditLogService auditLogService) {
+                            AuditLogService auditLogService, UserRepository userRepository) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.designationRepository = designationRepository;
         this.teamRepository = teamRepository;
+        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -76,6 +80,23 @@ public class EmployeeService {
         auditLogService.log("Employee", saved.getId(), "CREATE",
                 "Onboarded '" + saved.getFullName() + "' (" + saved.getEmployeeCode() + ")");
         return EmployeeDetailDTO.from(saved);
+    }
+
+    /**
+     * Links an existing Employee profile to a User login account (see
+     * Employee.user's javadoc - the two are deliberately separate
+     * entities). Used by the Recruitment module's auto-onboarding flow
+     * once it creates a login for a newly-hired candidate.
+     */
+    @Transactional
+    public void linkUserAccount(Long employeeId, Long userId) {
+        Employee employee = findActiveOrThrow(employeeId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        employee.setUser(user);
+        employeeRepository.save(employee);
+        auditLogService.log("Employee", employeeId, "USER_LINKED",
+                "Linked login account '" + user.getUsername() + "' to '" + employee.getFullName() + "'");
     }
 
     @Transactional

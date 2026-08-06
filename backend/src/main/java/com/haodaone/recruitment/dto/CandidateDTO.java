@@ -468,4 +468,56 @@ public class CandidateDTO {
             this.notes = notes;
         }
     }
+
+    /**
+     * "Select for Manager Round" from the HR interview decision. Distinct
+     * from the generic AdvanceStageRequest because this one carries the
+     * scheduling details needed to create the round 2 Interview record and
+     * fire the assignment emails in one atomic HR action, rather than HR
+     * doing "advance stage" then "schedule interview" as two separate steps.
+     */
+    public static class AssignManagerRequest {
+        @NotNull(message = "Hiring manager is required")
+        private Long managerEmployeeId;
+
+        @NotNull(message = "Interview date/time is required")
+        private LocalDateTime scheduledAt;
+
+        @NotBlank(message = "Google Meet link is required")
+        private String meetingLink;
+
+        private String instructions;
+
+        public Long getManagerEmployeeId() {
+            return managerEmployeeId;
+        }
+
+        public void setManagerEmployeeId(Long managerEmployeeId) {
+            this.managerEmployeeId = managerEmployeeId;
+        }
+
+        public LocalDateTime getScheduledAt() {
+            return scheduledAt;
+        }
+
+        public void setScheduledAt(LocalDateTime scheduledAt) {
+            this.scheduledAt = scheduledAt;
+        }
+
+        public String getMeetingLink() {
+            return meetingLink;
+        }
+
+        public void setMeetingLink(String meetingLink) {
+            this.meetingLink = meetingLink;
+        }
+
+        public String getInstructions() {
+            return instructions;
+        }
+
+        public void setInstructions(String instructions) {
+            this.instructions = instructions;
+        }
+    }
 }

@@ -20,6 +20,18 @@ public class InterviewDTO {
     private String status;
     private Integer rating;
     private String feedback;
+    private String meetingLink;
+    private Integer technicalRating;
+    private Integer communicationRating;
+    private String instructions;
+    private String decision;
+    // Candidate-context fields, populated only for "my interviews" (manager portal) responses,
+    // where the caller isn't separately fetching the candidate record - keeps that screen to one call.
+    private String candidateEmail;
+    private String candidateSkills;
+    private Double candidateExperienceYears;
+    private boolean candidateHasResume;
+    private String jobOpeningTitle;
 
     public static InterviewDTO from(Interview i) {
         InterviewDTO dto = new InterviewDTO();
@@ -33,10 +45,26 @@ public class InterviewDTO {
         dto.status = i.getStatus();
         dto.rating = i.getRating();
         dto.feedback = i.getFeedback();
+        dto.meetingLink = i.getMeetingLink();
+        dto.technicalRating = i.getTechnicalRating();
+        dto.communicationRating = i.getCommunicationRating();
+        dto.instructions = i.getInstructions();
+        dto.decision = i.getDecision();
         if (i.getInterviewer() != null) {
             dto.interviewerId = i.getInterviewer().getId();
             dto.interviewerName = i.getInterviewer().getFullName();
         }
+        return dto;
+    }
+
+    /** Same as from(), plus the candidate-context fields the Manager Portal's "My Interviews" screen needs without a second fetch. */
+    public static InterviewDTO fromWithCandidateContext(Interview i) {
+        InterviewDTO dto = from(i);
+        dto.candidateEmail = i.getCandidate().getEmail();
+        dto.candidateSkills = i.getCandidate().getSkills();
+        dto.candidateExperienceYears = i.getCandidate().getExperienceYears();
+        dto.candidateHasResume = i.getCandidate().getResumeFileKey() != null || i.getCandidate().getResumeUrl() != null;
+        dto.jobOpeningTitle = i.getCandidate().getJobOpening().getTitle();
         return dto;
     }
 
@@ -86,6 +114,46 @@ public class InterviewDTO {
 
     public String getFeedback() {
         return feedback;
+    }
+
+    public String getMeetingLink() {
+        return meetingLink;
+    }
+
+    public Integer getTechnicalRating() {
+        return technicalRating;
+    }
+
+    public Integer getCommunicationRating() {
+        return communicationRating;
+    }
+
+    public String getInstructions() {
+        return instructions;
+    }
+
+    public String getDecision() {
+        return decision;
+    }
+
+    public String getCandidateEmail() {
+        return candidateEmail;
+    }
+
+    public String getCandidateSkills() {
+        return candidateSkills;
+    }
+
+    public Double getCandidateExperienceYears() {
+        return candidateExperienceYears;
+    }
+
+    public boolean isCandidateHasResume() {
+        return candidateHasResume;
+    }
+
+    public String getJobOpeningTitle() {
+        return jobOpeningTitle;
     }
 
     public static class CreateRequest {
@@ -163,6 +231,71 @@ public class InterviewDTO {
 
         public void setFeedback(String feedback) {
             this.feedback = feedback;
+        }
+    }
+
+    /**
+     * Submitted by the interviewer (manager for round 2, final interviewer
+     * for round 3) after conducting their round. Which decision values are
+     * valid depends on the round - see InterviewService.submitDecision.
+     */
+    public static class DecisionRequest {
+        @Min(1)
+        @Max(5)
+        private Integer technicalRating;
+
+        @Min(1)
+        @Max(5)
+        private Integer communicationRating;
+
+        @NotNull(message = "Overall rating is required")
+        @Min(1)
+        @Max(5)
+        private Integer overallRating;
+
+        private String remarks;
+
+        @NotNull(message = "Decision is required")
+        private String decision;
+
+        public Integer getTechnicalRating() {
+            return technicalRating;
+        }
+
+        public void setTechnicalRating(Integer technicalRating) {
+            this.technicalRating = technicalRating;
+        }
+
+        public Integer getCommunicationRating() {
+            return communicationRating;
+        }
+
+        public void setCommunicationRating(Integer communicationRating) {
+            this.communicationRating = communicationRating;
+        }
+
+        public Integer getOverallRating() {
+            return overallRating;
+        }
+
+        public void setOverallRating(Integer overallRating) {
+            this.overallRating = overallRating;
+        }
+
+        public String getRemarks() {
+            return remarks;
+        }
+
+        public void setRemarks(String remarks) {
+            this.remarks = remarks;
+        }
+
+        public String getDecision() {
+            return decision;
+        }
+
+        public void setDecision(String decision) {
+            this.decision = decision;
         }
     }
 }

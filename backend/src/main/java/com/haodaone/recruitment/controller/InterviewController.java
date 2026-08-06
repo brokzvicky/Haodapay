@@ -31,6 +31,12 @@ public class InterviewController {
         return interviewService.upcoming();
     }
 
+    /** Manager Portal: "My Interviews" / "Assigned Interviews" - self-scoped to the caller, so any authenticated user can call it (there's simply nothing to see if you're not an assigned interviewer). */
+    @GetMapping("/my")
+    public List<InterviewDTO> myInterviews() {
+        return interviewService.myInterviews();
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
     public ResponseEntity<InterviewDTO> schedule(@Valid @RequestBody InterviewDTO.CreateRequest request) {
@@ -41,5 +47,18 @@ public class InterviewController {
     @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
     public InterviewDTO submitFeedback(@PathVariable Long id, @Valid @RequestBody InterviewDTO.FeedbackRequest request) {
         return interviewService.submitFeedback(id, request);
+    }
+
+    /**
+     * Manager/final-round decision (technical/communication/overall
+     * rating + remarks + Reject/Select-for-Final/Approve-for-Offer).
+     * Broader than RECRUITMENT_MANAGE on purpose - a plain manager with
+     * only INTERVIEW_DECISION can call this, but InterviewService further
+     * restricts them to interviews they're actually assigned to.
+     */
+    @PatchMapping("/{id}/decision")
+    @PreAuthorize("hasAnyAuthority('RECRUITMENT_MANAGE', 'INTERVIEW_DECISION')")
+    public InterviewDTO submitDecision(@PathVariable Long id, @Valid @RequestBody InterviewDTO.DecisionRequest request) {
+        return interviewService.submitDecision(id, request);
     }
 }

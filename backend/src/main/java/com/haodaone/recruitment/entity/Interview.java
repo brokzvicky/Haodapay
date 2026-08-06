@@ -37,11 +37,31 @@ public class Interview extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String status = "SCHEDULED";
 
-    /** 1-5, set once feedback is submitted */
+    /** 1-5. For round 1 (HR_INTERVIEW) this is the only rating recorded. For rounds 2/3, it doubles as "overall rating" alongside technicalRating/communicationRating below. */
     private Integer rating;
 
     @Column(length = 1000)
     private String feedback;
+
+    /** Google Meet (or other) link for this round - set by HR when assigning the manager round; carried through unchanged for the final round unless re-scheduled. */
+    @Column(name = "meeting_link", length = 500)
+    private String meetingLink;
+
+    /** 1-5, manager/final rounds only. */
+    @Column(name = "technical_rating")
+    private Integer technicalRating;
+
+    /** 1-5, manager/final rounds only. */
+    @Column(name = "communication_rating")
+    private Integer communicationRating;
+
+    /** Freeform note to the interviewer, e.g. "Focus on system design" - shown to them, not the candidate. */
+    @Column(length = 1000)
+    private String instructions;
+
+    /** This round's outcome: REJECTED, SELECT_FOR_FINAL (round 2 only), APPROVED_FOR_OFFER (round 3 only). Null until the interviewer submits a decision. */
+    @Column(length = 30)
+    private String decision;
 
     public Candidate getCandidate() {
         return candidate;
@@ -113,5 +133,45 @@ public class Interview extends BaseEntity {
 
     public void setFeedback(String feedback) {
         this.feedback = feedback;
+    }
+
+    public String getMeetingLink() {
+        return meetingLink;
+    }
+
+    public void setMeetingLink(String meetingLink) {
+        this.meetingLink = meetingLink;
+    }
+
+    public Integer getTechnicalRating() {
+        return technicalRating;
+    }
+
+    public void setTechnicalRating(Integer technicalRating) {
+        this.technicalRating = technicalRating;
+    }
+
+    public Integer getCommunicationRating() {
+        return communicationRating;
+    }
+
+    public void setCommunicationRating(Integer communicationRating) {
+        this.communicationRating = communicationRating;
+    }
+
+    public String getInstructions() {
+        return instructions;
+    }
+
+    public void setInstructions(String instructions) {
+        this.instructions = instructions;
+    }
+
+    public String getDecision() {
+        return decision;
+    }
+
+    public void setDecision(String decision) {
+        this.decision = decision;
     }
 }

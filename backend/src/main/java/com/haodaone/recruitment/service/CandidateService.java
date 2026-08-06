@@ -5,16 +5,26 @@ import com.haodaone.common.exception.BadRequestException;
 import com.haodaone.common.exception.ResourceNotFoundException;
 import com.haodaone.employee.dto.CreateEmployeeRequest;
 import com.haodaone.employee.dto.EmployeeDetailDTO;
+import com.haodaone.employee.entity.Employee;
+import com.haodaone.employee.repository.EmployeeRepository;
 import com.haodaone.employee.service.EmployeeService;
 import com.haodaone.recruitment.dto.CandidateDTO;
 import com.haodaone.recruitment.entity.Candidate;
+import com.haodaone.recruitment.entity.Interview;
 import com.haodaone.recruitment.entity.JobOpening;
 import com.haodaone.recruitment.repository.CandidateRepository;
+import com.haodaone.recruitment.repository.InterviewRepository;
 import com.haodaone.recruitment.repository.JobOpeningRepository;
+import com.haodaone.user.dto.CreateUserRequest;
+import com.haodaone.user.dto.UserDTO;
+import com.haodaone.user.entity.User;
+import com.haodaone.user.repository.UserRepository;
+import com.haodaone.user.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,20 +55,35 @@ public class CandidateService {
 
     private static final Set<String> TERMINAL_STAGES = Set.of("HIRED", "REJECTED");
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String TEMP_PASSWORD_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+
     private final CandidateRepository candidateRepository;
     private final JobOpeningRepository jobOpeningRepository;
     private final ResumeStorageService resumeStorageService;
     private final EmployeeService employeeService;
     private final AuditLogService auditLogService;
+    private final InterviewRepository interviewRepository;
+    private final EmployeeRepository employeeRepository;
+    private final EmailService emailService;
+    private final UserService userService;
+    private final UserRepository userRepository;
 
     public CandidateService(CandidateRepository candidateRepository, JobOpeningRepository jobOpeningRepository,
                              ResumeStorageService resumeStorageService, EmployeeService employeeService,
-                             AuditLogService auditLogService) {
+                             AuditLogService auditLogService, InterviewRepository interviewRepository,
+                             EmployeeRepository employeeRepository, EmailService emailService,
+                             UserService userService, UserRepository userRepository) {
         this.candidateRepository = candidateRepository;
         this.jobOpeningRepository = jobOpeningRepository;
         this.resumeStorageService = resumeStorageService;
         this.employeeService = employeeService;
         this.auditLogService = auditLogService;
+        this.interviewRepository = interviewRepository;
+        this.employeeRepository = employeeRepository;
+        this.emailService = emailService;
+        this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     public List<CandidateDTO> listAll(Long jobOpeningId) {
@@ -188,6 +213,49 @@ public class CandidateService {
         return CandidateDTO.from(saved);
     }
 
+    /**
+     * "Select for Manager Round": HR assigns a hiring manager, schedules
+     * the round 2 interview (date/time/Google Meet link), advances the
+     * candidate's stage, and emails both the manager and the candidate -
+     * all as one atomic action, per the Manager Interview Assignment
+     * workflow. Requires the candidate to have just finished the HR round
+     * (ROUND1), same as any other ROUND1 -> ROUND2 advance.
+     */
+    @Transactional
+    public CandidateDTO assignManagerRound(Long id, CandidateDTO.AssignManagerRequest request) {
+        Candidate candidate = findActiveOrThrow(id);
+        if (!"ROUND1".equals(candidate.getStage())) {
+            throw new BadRequestException("Only a candidate currently in the HR interview round (ROUND1) can be selected for the manager round - this candidate is " + candidate.getStage() + ".");
+        }
+
+        Employee manager = employeeRepository.findById(request.getManagerEmployeeId())
+                .orElseThrow(() -> new BadRequestException("Unknown hiring manager: " + request.getManagerEmployeeId()));
+
+        Interview interview = new Interview();
+        interview.setCandidate(candidate);
+        interview.setInterviewer(manager);
+        interview.setRoundNumber(2);
+        interview.setRoundType("HIRING_MANAGER");
+        interview.setScheduledAt(request.getScheduledAt());
+        interview.setMode("VIDEO");
+        interview.setStatus("SCHEDULED");
+        interview.setMeetingLink(request.getMeetingLink());
+        interview.setInstructions(request.getInstructions());
+        Interview savedInterview = interviewRepository.save(interview);
+
+        candidate.setStage("ROUND2");
+        Candidate savedCandidate = candidateRepository.save(candidate);
+
+        auditLogService.log("Candidate", savedCandidate.getId(), "MANAGER_ROUND_ASSIGNED",
+                "'" + savedCandidate.getFullName() + "' assigned to manager round with '" + manager.getFullName()
+                        + "' at " + request.getScheduledAt());
+
+        emailService.sendManagerAssignmentEmail(savedCandidate, savedInterview, manager);
+        emailService.sendCandidateManagerRoundEmail(savedCandidate, savedInterview, manager);
+
+        return CandidateDTO.from(savedCandidate);
+    }
+
     /** After Round 3 clears, HR generates the offer. */
     @Transactional
     public CandidateDTO generateOffer(Long id, CandidateDTO.OfferRequest request) {
@@ -205,6 +273,9 @@ public class CandidateService {
         auditLogService.log("Candidate", saved.getId(), "OFFER_GENERATED",
                 "Offer generated for '" + saved.getFullName() + "': " + request.getOfferAmount()
                         + ", joining " + request.getExpectedJoiningDate());
+
+        emailService.sendOfferEmail(saved);
+
         return CandidateDTO.from(saved);
     }
 
@@ -237,8 +308,14 @@ public class CandidateService {
         if (candidate.getJobOpening().getDesignation() != null) {
             employeeRequest.setDesignationId(candidate.getJobOpening().getDesignation().getId());
         }
+        // Reporting manager defaults to whoever ran this candidate's manager-round
+        // interview (round 2, HIRING_MANAGER) - the same person who'll actually
+        // manage them day to day, so this is the sensible default rather than
+        // leaving it unset for HR to fill in manually after the fact.
+        findManagerRoundInterviewer(candidate).ifPresent(m -> employeeRequest.setReportingManagerId(m.getId()));
 
         EmployeeDetailDTO createdEmployee = employeeService.create(employeeRequest);
+        createEmployeeLogin(createdEmployee);
 
         candidate.setOfferAcceptedAt(LocalDateTime.now());
         candidate.setCreatedEmployeeId(createdEmployee.getId());
@@ -248,6 +325,67 @@ public class CandidateService {
         auditLogService.log("Candidate", saved.getId(), "OFFER_ACCEPTED",
                 "'" + saved.getFullName() + "' accepted the offer - onboarded as employee " + createdEmployee.getEmployeeCode());
         return CandidateDTO.from(saved);
+    }
+
+    private java.util.Optional<Employee> findManagerRoundInterviewer(Candidate candidate) {
+        return interviewRepository.findAllByCandidateIdAndDeletedFalseOrderByScheduledAtDesc(candidate.getId()).stream()
+                .filter(i -> i.getRoundNumber() == 2 && i.getInterviewer() != null)
+                .findFirst()
+                .map(Interview::getInterviewer);
+    }
+
+    /**
+     * Completes "Create Employee Login" from the auto-onboarding
+     * requirements: a real HaodaOne User account, EMPLOYEE role, linked
+     * to the new Employee record, with credentials emailed to them.
+     * Failure here is logged, not thrown - the employee record itself is
+     * already committed by this point, and HR can always create the
+     * login manually from Users & Roles if this step has a problem
+     * (duplicate username/email, email delivery down, etc).
+     */
+    private void createEmployeeLogin(EmployeeDetailDTO employee) {
+        try {
+            String username = uniqueUsernameFor(employee.getEmployeeCode());
+            String temporaryPassword = generateTemporaryPassword();
+
+            CreateUserRequest userRequest = new CreateUserRequest();
+            userRequest.setUsername(username);
+            userRequest.setEmail(employee.getEmail());
+            userRequest.setFullName(employee.getFullName());
+            userRequest.setTemporaryPassword(temporaryPassword);
+            userRequest.setRoleNames(Set.of("EMPLOYEE"));
+
+            UserDTO createdUser = userService.create(userRequest);
+            User user = userRepository.findById(createdUser.getId())
+                    .orElseThrow(() -> new IllegalStateException("Just-created user vanished: " + createdUser.getId()));
+            employeeService.linkUserAccount(employee.getId(), user.getId());
+
+            emailService.sendEmployeeWelcomeEmail(employee.getEmail(), employee.getFullName(),
+                    employee.getEmployeeCode(), username, temporaryPassword);
+        } catch (Exception e) {
+            // See javadoc above - intentionally swallowed so a login-creation
+            // hiccup can't undo the employee record this method already saved.
+            auditLogService.log("Employee", employee.getId(), "LOGIN_CREATE_FAILED",
+                    "Auto-creating a login for '" + employee.getFullName() + "' failed: " + e.getMessage());
+        }
+    }
+
+    private String uniqueUsernameFor(String employeeCode) {
+        String base = employeeCode.toLowerCase();
+        String candidate = base;
+        int suffix = 1;
+        while (userRepository.existsByUsername(candidate)) {
+            candidate = base + (++suffix);
+        }
+        return candidate;
+    }
+
+    private String generateTemporaryPassword() {
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            sb.append(TEMP_PASSWORD_CHARS.charAt(SECURE_RANDOM.nextInt(TEMP_PASSWORD_CHARS.length())));
+        }
+        return sb.toString();
     }
 
     private void applyDecision(Candidate candidate, String newStage, Integer rating, String remarks, String rejectionReason) {
@@ -264,14 +402,11 @@ public class CandidateService {
     }
 
     private Candidate findActiveOrThrow(Long id) {
-        Candidate candidate = candidateRepository.findByIdWithJobOpening(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Candidate not found: " + id));
-
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidate not found: " + id));
         if (candidate.isDeleted()) {
             throw new ResourceNotFoundException("Candidate not found: " + id);
         }
-
         return candidate;
     }
 }

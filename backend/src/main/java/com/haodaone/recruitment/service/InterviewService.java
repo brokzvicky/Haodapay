@@ -10,11 +10,17 @@ import com.haodaone.recruitment.entity.Candidate;
 import com.haodaone.recruitment.entity.Interview;
 import com.haodaone.recruitment.repository.CandidateRepository;
 import com.haodaone.recruitment.repository.InterviewRepository;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class InterviewService {
@@ -45,6 +51,15 @@ public class InterviewService {
     public List<InterviewDTO> upcoming() {
         return interviewRepository.findAllByStatusOrderByScheduledAtAsc("SCHEDULED").stream()
                 .map(InterviewDTO::from)
+                .toList();
+    }
+
+    /** Manager Portal: interviews assigned to the currently logged-in user, resolved via their linked Employee record. */
+    public List<InterviewDTO> myInterviews() {
+        Employee me = currentEmployee()
+                .orElseThrow(() -> new BadRequestException("Your account isn't linked to an employee profile, so you have no assigned interviews."));
+        return interviewRepository.findAllByInterviewer_IdAndDeletedFalseOrderByScheduledAtDesc(me.getId()).stream()
+                .map(InterviewDTO::fromWithCandidateContext)
                 .toList();
     }
 
@@ -104,5 +119,95 @@ public class InterviewService {
         auditLogService.log("Interview", saved.getId(), "UPDATE",
                 "Round " + interview.getRoundNumber() + " feedback submitted (rating " + request.getRating() + "/5)");
         return InterviewDTO.from(saved);
+    }
+
+    /**
+     * The manager-round or final-round interviewer's post-interview
+     * decision: technical/communication/overall ratings, remarks, and a
+     * decision that's either terminal (REJECTED) or advances the
+     * candidate to the next stage. Valid decisions depend on the round:
+     * round 2 -> REJECTED or SELECT_FOR_FINAL (candidate moves to
+     * ROUND3, where HR schedules the final interview same as any other
+     * round); round 3 -> REJECTED or APPROVED_FOR_OFFER (candidate stays
+     * ROUND3, which is exactly the stage CandidateService.generateOffer
+     * already requires - HR sees the update and generates the offer from
+     * there, reusing that existing action rather than a new one).
+     *
+     * Authorization is resource-scoped rather than a blanket permission:
+     * whoever has RECRUITMENT_MANAGE (HR/admin) can submit on any
+     * interview, but a plain manager (INTERVIEW_DECISION only, no
+     * RECRUITMENT_MANAGE) can only submit on interviews where they are
+     * the assigned interviewer - enforced here, not just at the
+     * controller, since @PreAuthorize can't express "only your own rows"
+     * without a lookup this service already has to do anyway.
+     */
+    @Transactional
+    public InterviewDTO submitDecision(Long id, InterviewDTO.DecisionRequest request) {
+        Interview interview = interviewRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Interview not found: " + id));
+
+        if (interview.getRoundNumber() != 2 && interview.getRoundNumber() != 3) {
+            throw new BadRequestException("Only manager-round (2) and final-round (3) interviews take a decision here - use the feedback endpoint for round 1.");
+        }
+        assertCanDecide(interview);
+
+        Set<String> validDecisions = interview.getRoundNumber() == 2
+                ? Set.of("REJECTED", "SELECT_FOR_FINAL")
+                : Set.of("REJECTED", "APPROVED_FOR_OFFER");
+        if (!validDecisions.contains(request.getDecision())) {
+            throw new BadRequestException("Round " + interview.getRoundNumber() + " decision must be one of " + validDecisions);
+        }
+
+        interview.setTechnicalRating(request.getTechnicalRating());
+        interview.setCommunicationRating(request.getCommunicationRating());
+        interview.setRating(request.getOverallRating());
+        interview.setFeedback(request.getRemarks());
+        interview.setDecision(request.getDecision());
+        interview.setStatus("COMPLETED");
+        Interview savedInterview = interviewRepository.save(interview);
+
+        Candidate candidate = interview.getCandidate();
+        String fromStage = candidate.getStage();
+        if ("REJECTED".equals(request.getDecision())) {
+            candidate.setStage("REJECTED");
+        } else if ("SELECT_FOR_FINAL".equals(request.getDecision())) {
+            candidate.setStage("ROUND3");
+        }
+        // APPROVED_FOR_OFFER leaves the candidate at ROUND3 on purpose - see javadoc above.
+        Candidate savedCandidate = candidateRepository.save(candidate);
+
+        auditLogService.log("Interview", savedInterview.getId(), "DECISION",
+                "Round " + interview.getRoundNumber() + " decision for '" + savedCandidate.getFullName() + "': "
+                        + request.getDecision() + " (overall " + request.getOverallRating() + "/5)"
+                        + (!fromStage.equals(savedCandidate.getStage()) ? " [" + fromStage + " -> " + savedCandidate.getStage() + "]" : ""));
+
+        return InterviewDTO.from(savedInterview);
+    }
+
+    private void assertCanDecide(Interview interview) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Not authenticated");
+        }
+        boolean hasFullManageAuthority = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("RECRUITMENT_MANAGE"::equals);
+        if (hasFullManageAuthority) {
+            return;
+        }
+        Employee me = currentEmployee().orElse(null);
+        boolean isAssignedInterviewer = me != null && interview.getInterviewer() != null
+                && me.getId().equals(interview.getInterviewer().getId());
+        if (!isAssignedInterviewer) {
+            throw new AccessDeniedException("You can only submit a decision for interviews assigned to you.");
+        }
+    }
+
+    private Optional<Employee> currentEmployee() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Optional.empty();
+        }
+        return employeeRepository.findByUser_UsernameAndDeletedFalse(authentication.getName());
     }
 }

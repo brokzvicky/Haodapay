@@ -8,4 +8,7 @@ import java.util.List;
 public interface InterviewRepository extends JpaRepository<Interview, Long> {
     List<Interview> findAllByCandidateIdAndDeletedFalseOrderByScheduledAtDesc(Long candidateId);
     List<Interview> findAllByStatusOrderByScheduledAtAsc(String status);
+
+    /** "My Interviews" for the currently logged-in manager - resolved via their linked Employee record. */
+    List<Interview> findAllByInterviewer_IdAndDeletedFalseOrderByScheduledAtDesc(Long interviewerEmployeeId);
 }

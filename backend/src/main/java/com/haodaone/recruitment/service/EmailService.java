@@ -1,0 +1,194 @@
+package com.haodaone.recruitment.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.haodaone.employee.entity.Employee;
+import com.haodaone.recruitment.entity.Candidate;
+import com.haodaone.recruitment.entity.Interview;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Transactional email for the Recruitment module, via Brevo's REST API
+ * rather than SMTP - Render blocks outbound SMTP, same constraint and
+ * provider HaodaAsset hit for invoice emails (see that app's
+ * JavaMailSender-to-Brevo migration). No new Maven dependency: this uses
+ * the JDK's built-in java.net.http.HttpClient and the Jackson
+ * ObjectMapper Spring Boot already wires in, rather than pulling in a
+ * Brevo SDK.
+ *
+ * If app.email.brevo-api-key isn't set (e.g. local dev without a key
+ * configured), sendEmail logs the would-be email at INFO instead of
+ * failing the calling workflow - assigning a manager, generating an
+ * offer, etc. should never fail *because* email delivery isn't
+ * configured yet.
+ */
+@Service
+public class EmailService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("h:mm a");
+    private static final URI BREVO_ENDPOINT = URI.create("https://api.brevo.com/v3/smtp/email");
+
+    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${app.email.brevo-api-key}")
+    private String brevoApiKey;
+
+    @Value("${app.email.from-address}")
+    private String fromAddress;
+
+    @Value("${app.email.from-name}")
+    private String fromName;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    /** To the hiring manager, when HR assigns them a candidate for the manager round. */
+    public void sendManagerAssignmentEmail(Candidate candidate, Interview interview, Employee manager) {
+        if (manager.getEmail() == null || manager.getEmail().isBlank()) {
+            log.warn("Manager {} has no email on file - skipping manager-assignment email for candidate {}",
+                    manager.getFullName(), candidate.getFullName());
+            return;
+        }
+
+        String subject = "Candidate Assigned for Manager Interview";
+        String myInterviewsLink = frontendUrl + "/my-interviews";
+        String body = "<p>Hi " + escape(manager.getFullName()) + ",</p>"
+                + "<p>You've been assigned to conduct the manager interview for the following candidate:</p>"
+                + "<table style=\"border-collapse:collapse;margin:16px 0;\">"
+                + row("Candidate Name", escape(candidate.getFullName()))
+                + row("Applied Position", escape(candidate.getJobOpening().getTitle()))
+                + row("Department", escape(candidate.getJobOpening().getDepartment() != null ? candidate.getJobOpening().getDepartment().getName() : "-"))
+                + row("Candidate Email", escape(candidate.getEmail()))
+                + row("Candidate Mobile Number", escape(candidate.getPhone() != null ? candidate.getPhone() : "-"))
+                + row("Resume", "<a href=\"" + myInterviewsLink + "\">View in My Interviews</a>")
+                + row("Interview Date", interview.getScheduledAt().format(DATE_FMT))
+                + row("Interview Time", interview.getScheduledAt().format(TIME_FMT))
+                + row("Google Meet Link", "<a href=\"" + escape(interview.getMeetingLink()) + "\">" + escape(interview.getMeetingLink()) + "</a>")
+                + "</table>"
+                + (interview.getInstructions() != null && !interview.getInstructions().isBlank()
+                        ? "<p><strong>Interview Instructions:</strong> " + escape(interview.getInstructions()) + "</p>"
+                        : "")
+                + "<p>Please record your rating and decision in HaodaOne after the interview.</p>";
+
+        send(manager.getEmail(), manager.getFullName(), subject, body);
+    }
+
+    /** To the candidate, once HR schedules their manager-round interview. */
+    public void sendCandidateManagerRoundEmail(Candidate candidate, Interview interview, Employee manager) {
+        String subject = "Manager Interview Scheduled";
+        String body = "<p>Dear " + escape(candidate.getFirstName()) + ",</p>"
+                + "<p>Congratulations! You've cleared the initial interview and have been scheduled for the next round.</p>"
+                + "<table style=\"border-collapse:collapse;margin:16px 0;\">"
+                + row("Candidate Name", escape(candidate.getFullName()))
+                + row("Position Applied", escape(candidate.getJobOpening().getTitle()))
+                + row("Department", escape(candidate.getJobOpening().getDepartment() != null ? candidate.getJobOpening().getDepartment().getName() : "-"))
+                + row("Hiring Manager", escape(manager.getFullName()))
+                + row("Interview Date", interview.getScheduledAt().format(DATE_FMT))
+                + row("Interview Time", interview.getScheduledAt().format(TIME_FMT))
+                + row("Google Meet Link", "<a href=\"" + escape(interview.getMeetingLink()) + "\">" + escape(interview.getMeetingLink()) + "</a>")
+                + "</table>"
+                + (interview.getInstructions() != null && !interview.getInstructions().isBlank()
+                        ? "<p><strong>Interview Instructions:</strong> " + escape(interview.getInstructions()) + "</p>"
+                        : "")
+                + "<p>We look forward to speaking with you. Best of luck!</p>";
+
+        send(candidate.getEmail(), candidate.getFullName(), subject, body);
+    }
+
+    /** To the candidate, once HR generates their offer. */
+    public void sendOfferEmail(Candidate candidate) {
+        String subject = "Your Offer from Haoda";
+        String body = "<p>Dear " + escape(candidate.getFirstName()) + ",</p>"
+                + "<p>Congratulations! We are pleased to offer you the position of "
+                + "<strong>" + escape(candidate.getJobOpening().getTitle()) + "</strong>.</p>"
+                + "<table style=\"border-collapse:collapse;margin:16px 0;\">"
+                + row("Position", escape(candidate.getJobOpening().getTitle()))
+                + (candidate.getOfferAmount() != null ? row("Offered CTC", candidate.getOfferAmount().toString()) : "")
+                + (candidate.getExpectedJoiningDate() != null ? row("Expected Joining Date", candidate.getExpectedJoiningDate().format(DateTimeFormatter.ofPattern("d MMMM yyyy"))) : "")
+                + "</table>"
+                + "<p>Please reply to confirm your acceptance so we can proceed with onboarding.</p>";
+
+        send(candidate.getEmail(), candidate.getFullName(), subject, body);
+    }
+
+    /** To the new hire, once accepting the offer auto-creates their employee login. */
+    public void sendEmployeeWelcomeEmail(String toEmail, String toName, String employeeCode, String username, String temporaryPassword) {
+        String subject = "Welcome to Haoda - Your Login Details";
+        String loginUrl = frontendUrl + "/login";
+        String body = "<p>Dear " + escape(toName) + ",</p>"
+                + "<p>Welcome aboard! Your employee account has been created.</p>"
+                + "<table style=\"border-collapse:collapse;margin:16px 0;\">"
+                + row("Employee ID", escape(employeeCode))
+                + row("Username", escape(username))
+                + row("Temporary Password", escape(temporaryPassword))
+                + row("Login", "<a href=\"" + loginUrl + "\">" + loginUrl + "</a>")
+                + "</table>"
+                + "<p>You'll be asked to set a new password the first time you log in.</p>";
+
+        send(toEmail, toName, subject, body);
+    }
+
+    private void send(String toEmail, String toName, String subject, String htmlBody) {
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            log.info("BREVO_API_KEY not configured - not sending email. To: {} <{}>, Subject: {}", toName, toEmail, subject);
+            return;
+        }
+
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("sender", Map.of("email", fromAddress, "name", fromName));
+            payload.put("to", List.of(Map.of("email", toEmail, "name", toName != null ? toName : toEmail)));
+            payload.put("subject", subject);
+            payload.put("htmlContent", htmlBody);
+
+            String json = objectMapper.writeValueAsString(payload);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(BREVO_ENDPOINT)
+                    .header("api-key", brevoApiKey)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(15))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("Sent email to {} <{}>: {}", toName, toEmail, subject);
+            } else {
+                // Deliberately not thrown - a failed email shouldn't roll back the
+                // candidate/interview state change that triggered it. Log loudly so
+                // it's visible, and let HR notice + manually follow up if needed.
+                log.error("Brevo email send failed ({}) to {} <{}>: {}", response.statusCode(), toName, toEmail, response.body());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send email to {} <{}>: {}", toName, toEmail, e.getMessage(), e);
+        }
+    }
+
+    private String row(String label, String value) {
+        return "<tr><td style=\"padding:4px 12px 4px 0;color:#555;\">" + escape(label) + "</td>"
+                + "<td style=\"padding:4px 0;font-weight:600;\">" + value + "</td></tr>";
+    }
+
+    private String escape(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+}
