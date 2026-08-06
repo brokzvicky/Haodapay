@@ -53,7 +53,7 @@ public class Candidate extends BaseEntity {
     @Column(name = "resume_url", length = 500)
     private String resumeUrl;
 
-    /** Storage key for an uploaded resume file (see ResumeStorageService) - set when the candidate applied via the public Careers page. */
+    /** S3 object key for an uploaded resume file, e.g. "resumes/uuid.pdf" (see ResumeS3StorageService) - set when the candidate applied via the public Careers page. */
     @Column(name = "resume_file_key", length = 300)
     private String resumeFileKey;
 

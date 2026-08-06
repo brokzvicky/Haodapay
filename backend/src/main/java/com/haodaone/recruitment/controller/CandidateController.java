@@ -2,7 +2,7 @@ package com.haodaone.recruitment.controller;
 
 import com.haodaone.recruitment.dto.CandidateDTO;
 import com.haodaone.recruitment.service.CandidateService;
-import com.haodaone.recruitment.service.ResumeStorageService;
+import com.haodaone.recruitment.service.ResumeS3StorageService;
 import jakarta.validation.Valid;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -18,9 +18,9 @@ import java.util.List;
 public class CandidateController {
 
     private final CandidateService candidateService;
-    private final ResumeStorageService resumeStorageService;
+    private final ResumeS3StorageService resumeStorageService;
 
-    public CandidateController(CandidateService candidateService, ResumeStorageService resumeStorageService) {
+    public CandidateController(CandidateService candidateService, ResumeS3StorageService resumeStorageService) {
         this.candidateService = candidateService;
         this.resumeStorageService = resumeStorageService;
     }

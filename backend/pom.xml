@@ -20,7 +20,27 @@
     <properties>
         <java.version>21</java.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <!-- AWS SDK v2 (Amazon S3 resume storage) - same version HaodaAsset
+             pins for its invoice storage, so both apps stay on one tested
+             release. -->
+        <aws-sdk.version>2.29.24</aws-sdk.version>
     </properties>
+
+    <!-- Imports the AWS SDK v2 Bill of Materials so every software.amazon.awssdk
+         module (just "s3" below) resolves to a single, tested, compatible
+         version set without pinning each module's version by hand. Mirrors
+         HaodaAsset's pom.xml exactly. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -78,6 +98,15 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Amazon S3 (AWS SDK for Java v2) - used by S3Config /
+             ResumeS3StorageService to store, stream, and delete candidate
+             resumes uploaded via the public Careers page in Amazon S3
+             instead of the local (ephemeral, on Render) filesystem. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
         </dependency>
 
         <dependency>

@@ -60,7 +60,7 @@ public class CandidateService {
 
     private final CandidateRepository candidateRepository;
     private final JobOpeningRepository jobOpeningRepository;
-    private final ResumeStorageService resumeStorageService;
+    private final ResumeS3StorageService resumeStorageService;
     private final EmployeeService employeeService;
     private final AuditLogService auditLogService;
     private final InterviewRepository interviewRepository;
@@ -70,7 +70,7 @@ public class CandidateService {
     private final UserRepository userRepository;
 
     public CandidateService(CandidateRepository candidateRepository, JobOpeningRepository jobOpeningRepository,
-                             ResumeStorageService resumeStorageService, EmployeeService employeeService,
+                             ResumeS3StorageService resumeStorageService, EmployeeService employeeService,
                              AuditLogService auditLogService, InterviewRepository interviewRepository,
                              EmployeeRepository employeeRepository, EmailService emailService,
                              UserService userService, UserRepository userRepository) {
