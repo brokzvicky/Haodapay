@@ -35,6 +35,12 @@ public class CandidateDTO {
     private Double offerAmount;
     private LocalDate expectedJoiningDate;
     private LocalDateTime offerGeneratedAt;
+    private boolean hasOfferLetter;
+    private String offerLetterOriginalName;
+    private LocalDateTime offerLetterUploadedAt;
+    private String offerLetterUploadedBy;
+    private LocalDateTime offerLetterSentAt;
+    private String offerLetterEmailStatus;
     private LocalDateTime offerAcceptedAt;
     private Long createdEmployeeId;
     private String notes;
@@ -63,6 +69,12 @@ public class CandidateDTO {
         dto.offerAmount = c.getOfferAmount();
         dto.expectedJoiningDate = c.getExpectedJoiningDate();
         dto.offerGeneratedAt = c.getOfferGeneratedAt();
+        dto.hasOfferLetter = c.getOfferLetterFileKey() != null && !c.getOfferLetterFileKey().isBlank();
+        dto.offerLetterOriginalName = c.getOfferLetterOriginalName();
+        dto.offerLetterUploadedAt = c.getOfferLetterUploadedAt();
+        dto.offerLetterUploadedBy = c.getOfferLetterUploadedBy();
+        dto.offerLetterSentAt = c.getOfferLetterSentAt();
+        dto.offerLetterEmailStatus = c.getOfferLetterEmailStatus();
         dto.offerAcceptedAt = c.getOfferAcceptedAt();
         dto.createdEmployeeId = c.getCreatedEmployeeId();
         dto.notes = c.getNotes();
@@ -155,6 +167,30 @@ public class CandidateDTO {
 
     public LocalDateTime getOfferGeneratedAt() {
         return offerGeneratedAt;
+    }
+
+    public boolean isHasOfferLetter() {
+        return hasOfferLetter;
+    }
+
+    public String getOfferLetterOriginalName() {
+        return offerLetterOriginalName;
+    }
+
+    public LocalDateTime getOfferLetterUploadedAt() {
+        return offerLetterUploadedAt;
+    }
+
+    public String getOfferLetterUploadedBy() {
+        return offerLetterUploadedBy;
+    }
+
+    public LocalDateTime getOfferLetterSentAt() {
+        return offerLetterSentAt;
+    }
+
+    public String getOfferLetterEmailStatus() {
+        return offerLetterEmailStatus;
     }
 
     public LocalDateTime getOfferAcceptedAt() {

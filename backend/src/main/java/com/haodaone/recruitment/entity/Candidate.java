@@ -14,11 +14,21 @@ import java.time.LocalDateTime;
  * offer letters, approvals, or revision history are needed.
  *
  * Pipeline: APPLIED -> SHORTLISTED (or REJECTED/HOLD) -> ROUND1 -> ROUND2
- * -> ROUND3 -> OFFERED -> OFFER_ACCEPTED -> HIRED, with REJECTED reachable
- * from any non-terminal stage. See CandidateService.VALID_STAGES /
- * ALLOWED_TRANSITIONS for the enforced graph, and the Interview entity
- * (roundNumber/roundType) for the per-round interviewer/rating/feedback
- * history that goes with ROUND1/ROUND2/ROUND3.
+ * -> ROUND3 -> OFFERED -> OFFER_LETTER_SENT -> OFFER_ACCEPTED -> HIRED,
+ * with REJECTED reachable from any non-terminal stage. See
+ * CandidateService.VALID_STAGES / ALLOWED_TRANSITIONS for the enforced
+ * graph, and the Interview entity (roundNumber/roundType) for the
+ * per-round interviewer/rating/feedback history that goes with
+ * ROUND1/ROUND2/ROUND3.
+ *
+ * OFFERED is reached the moment HR generates the offer (offerAmount/
+ * expectedJoiningDate/offerGeneratedAt) - no offer letter document exists
+ * yet at that point. HR then uploads the signed offer letter
+ * (offerLetterFileKey et al, see CandidateService.uploadOfferLetter) and
+ * explicitly sends it (see CandidateService.sendOfferLetter), which is
+ * what moves the stage on to OFFER_LETTER_SENT and stamps
+ * offerLetterSentAt/offerLetterEmailStatus. Nothing here auto-emails the
+ * candidate just because an offer was generated.
  */
 @Entity
 @Table(name = "candidate")
@@ -95,6 +105,29 @@ public class Candidate extends BaseEntity {
 
     @Column(name = "offer_generated_at")
     private LocalDateTime offerGeneratedAt;
+
+    /** S3 object key for the HR-uploaded offer letter document (see OfferLetterS3StorageService) - never a filesystem path, never a full URL. */
+    @Column(name = "offer_letter_file_key", length = 300)
+    private String offerLetterFileKey;
+
+    /** Original uploaded filename, kept only for display - never used to build the storage path. */
+    @Column(name = "offer_letter_original_name", length = 255)
+    private String offerLetterOriginalName;
+
+    @Column(name = "offer_letter_uploaded_at")
+    private LocalDateTime offerLetterUploadedAt;
+
+    /** Display name (or username, if no linked Employee) of whoever uploaded the current offer letter file. */
+    @Column(name = "offer_letter_uploaded_by", length = 150)
+    private String offerLetterUploadedBy;
+
+    /** Set every time "Send Offer Letter" is clicked - most recent send/resend, not just the first. */
+    @Column(name = "offer_letter_sent_at")
+    private LocalDateTime offerLetterSentAt;
+
+    /** SENT or FAILED - the outcome of the most recent send/resend attempt's email delivery. */
+    @Column(name = "offer_letter_email_status", length = 20)
+    private String offerLetterEmailStatus;
 
     @Column(name = "offer_accepted_at")
     private LocalDateTime offerAcceptedAt;
@@ -260,6 +293,54 @@ public class Candidate extends BaseEntity {
 
     public void setOfferGeneratedAt(LocalDateTime offerGeneratedAt) {
         this.offerGeneratedAt = offerGeneratedAt;
+    }
+
+    public String getOfferLetterFileKey() {
+        return offerLetterFileKey;
+    }
+
+    public void setOfferLetterFileKey(String offerLetterFileKey) {
+        this.offerLetterFileKey = offerLetterFileKey;
+    }
+
+    public String getOfferLetterOriginalName() {
+        return offerLetterOriginalName;
+    }
+
+    public void setOfferLetterOriginalName(String offerLetterOriginalName) {
+        this.offerLetterOriginalName = offerLetterOriginalName;
+    }
+
+    public LocalDateTime getOfferLetterUploadedAt() {
+        return offerLetterUploadedAt;
+    }
+
+    public void setOfferLetterUploadedAt(LocalDateTime offerLetterUploadedAt) {
+        this.offerLetterUploadedAt = offerLetterUploadedAt;
+    }
+
+    public String getOfferLetterUploadedBy() {
+        return offerLetterUploadedBy;
+    }
+
+    public void setOfferLetterUploadedBy(String offerLetterUploadedBy) {
+        this.offerLetterUploadedBy = offerLetterUploadedBy;
+    }
+
+    public LocalDateTime getOfferLetterSentAt() {
+        return offerLetterSentAt;
+    }
+
+    public void setOfferLetterSentAt(LocalDateTime offerLetterSentAt) {
+        this.offerLetterSentAt = offerLetterSentAt;
+    }
+
+    public String getOfferLetterEmailStatus() {
+        return offerLetterEmailStatus;
+    }
+
+    public void setOfferLetterEmailStatus(String offerLetterEmailStatus) {
+        this.offerLetterEmailStatus = offerLetterEmailStatus;
     }
 
     public LocalDateTime getOfferAcceptedAt() {

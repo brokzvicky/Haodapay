@@ -36,7 +36,10 @@ public class CandidateService {
 
     /** Full pipeline vocabulary - see Candidate's class doc for the stage diagram. */
     private static final Set<String> VALID_STAGES = Set.of(
-            "APPLIED", "SHORTLISTED", "HOLD", "ROUND1", "ROUND2", "ROUND3", "OFFERED", "HIRED", "REJECTED");
+            "APPLIED", "SHORTLISTED", "HOLD", "ROUND1", "ROUND2", "ROUND3", "OFFERED", "OFFER_LETTER_SENT", "HIRED", "REJECTED");
+
+    /** Stages an offer letter can be uploaded/replaced or (re)sent during. */
+    private static final Set<String> OFFER_LETTER_STAGES = Set.of("OFFERED", "OFFER_LETTER_SENT");
 
     /** Decisions the initial HR review (on an APPLIED candidate) can make. */
     private static final Set<String> REVIEW_DECISIONS = Set.of("SHORTLISTED", "HOLD", "REJECTED");
@@ -61,6 +64,7 @@ public class CandidateService {
     private final CandidateRepository candidateRepository;
     private final JobOpeningRepository jobOpeningRepository;
     private final ResumeS3StorageService resumeStorageService;
+    private final OfferLetterS3StorageService offerLetterStorageService;
     private final EmployeeService employeeService;
     private final AuditLogService auditLogService;
     private final InterviewRepository interviewRepository;
@@ -70,13 +74,15 @@ public class CandidateService {
     private final UserRepository userRepository;
 
     public CandidateService(CandidateRepository candidateRepository, JobOpeningRepository jobOpeningRepository,
-                             ResumeS3StorageService resumeStorageService, EmployeeService employeeService,
+                             ResumeS3StorageService resumeStorageService, OfferLetterS3StorageService offerLetterStorageService,
+                             EmployeeService employeeService,
                              AuditLogService auditLogService, InterviewRepository interviewRepository,
                              EmployeeRepository employeeRepository, EmailService emailService,
                              UserService userService, UserRepository userRepository) {
         this.candidateRepository = candidateRepository;
         this.jobOpeningRepository = jobOpeningRepository;
         this.resumeStorageService = resumeStorageService;
+        this.offerLetterStorageService = offerLetterStorageService;
         this.employeeService = employeeService;
         this.auditLogService = auditLogService;
         this.interviewRepository = interviewRepository;
@@ -271,7 +277,13 @@ public class CandidateService {
         return CandidateDTO.from(savedCandidate);
     }
 
-    /** After Round 3 clears, HR generates the offer. */
+    /**
+     * After Round 3 clears, HR generates the offer. This only records the
+     * offer terms and moves the candidate to OFFERED - it does NOT email
+     * anything. HR must separately upload a signed offer letter
+     * (uploadOfferLetter) and explicitly send it (sendOfferLetter) before
+     * the candidate is notified.
+     */
     @Transactional
     public CandidateDTO generateOffer(Long id, CandidateDTO.OfferRequest request) {
         Candidate candidate = findActiveOrThrow(id);
@@ -289,9 +301,81 @@ public class CandidateService {
                 "Offer generated for '" + saved.getFullName() + "': " + request.getOfferAmount()
                         + ", joining " + request.getExpectedJoiningDate());
 
-        emailService.sendOfferEmail(saved);
+        return CandidateDTO.from(saved);
+    }
+
+    /**
+     * HR uploads (or replaces) the offer letter document for a candidate
+     * whose offer has been generated. Allowed while OFFERED (first
+     * upload) or OFFER_LETTER_SENT (replacing before a resend) - does not
+     * itself change the candidate's stage or send anything. Replacing an
+     * existing file deletes the old S3 object.
+     */
+    @Transactional
+    public CandidateDTO uploadOfferLetter(Long id, MultipartFile file) {
+        Candidate candidate = findActiveOrThrow(id);
+        if (!OFFER_LETTER_STAGES.contains(candidate.getStage())) {
+            throw new BadRequestException("An offer letter can only be uploaded after an offer has been generated for this candidate.");
+        }
+
+        String previousKey = candidate.getOfferLetterFileKey();
+        String key = offerLetterStorageService.store(file);
+
+        candidate.setOfferLetterFileKey(key);
+        candidate.setOfferLetterOriginalName(file.getOriginalFilename());
+        candidate.setOfferLetterUploadedAt(LocalDateTime.now());
+        candidate.setOfferLetterUploadedBy(currentActorName());
+
+        Candidate saved = candidateRepository.save(candidate);
+
+        if (previousKey != null && !previousKey.isBlank()) {
+            offerLetterStorageService.delete(previousKey);
+        }
+
+        auditLogService.log("Candidate", saved.getId(), "OFFER_LETTER_UPLOADED",
+                "Offer letter uploaded for '" + saved.getFullName() + "': " + file.getOriginalFilename());
 
         return CandidateDTO.from(saved);
+    }
+
+    /**
+     * HR clicks "Send Offer Letter" (or "Resend"): emails the currently-
+     * uploaded document as an attachment and moves the candidate to
+     * OFFER_LETTER_SENT. The stage change and offerLetterSentAt timestamp
+     * are recorded regardless of email outcome - HR took the action, and
+     * offerLetterEmailStatus (SENT/FAILED) separately records whether
+     * delivery actually succeeded, so a delivery failure can be resent
+     * without HR having to redo the upload.
+     */
+    @Transactional
+    public CandidateDTO sendOfferLetter(Long id) {
+        Candidate candidate = findActiveOrThrow(id);
+        if (!OFFER_LETTER_STAGES.contains(candidate.getStage())) {
+            throw new BadRequestException("An offer letter can only be sent after an offer has been generated for this candidate.");
+        }
+        if (candidate.getOfferLetterFileKey() == null || candidate.getOfferLetterFileKey().isBlank()) {
+            throw new BadRequestException("Please upload an offer letter before sending it.");
+        }
+
+        byte[] fileBytes = offerLetterStorageService.retrieveBytes(candidate.getOfferLetterFileKey());
+        String filename = candidate.getOfferLetterOriginalName() != null ? candidate.getOfferLetterOriginalName() : "offer-letter";
+
+        boolean delivered = emailService.sendOfferLetterEmail(candidate, fileBytes, filename);
+
+        candidate.setStage("OFFER_LETTER_SENT");
+        candidate.setOfferLetterSentAt(LocalDateTime.now());
+        candidate.setOfferLetterEmailStatus(delivered ? "SENT" : "FAILED");
+
+        Candidate saved = candidateRepository.save(candidate);
+        auditLogService.log("Candidate", saved.getId(), "OFFER_LETTER_SENT",
+                "Offer letter emailed to '" + saved.getFullName() + "' (" + saved.getOfferLetterEmailStatus() + ")");
+
+        return CandidateDTO.from(saved);
+    }
+
+    /** Offer letter storage key isn't exposed on CandidateDTO - the preview/download endpoints need the raw key. */
+    public String getOfferLetterKey(Long id) {
+        return findActiveOrThrow(id).getOfferLetterFileKey();
     }
 
     /**
@@ -305,8 +389,8 @@ public class CandidateService {
     @Transactional
     public CandidateDTO acceptOffer(Long id) {
         Candidate candidate = findActiveOrThrow(id);
-        if (!"OFFERED".equals(candidate.getStage())) {
-            throw new BadRequestException("This candidate doesn't have an active offer to accept.");
+        if (!"OFFER_LETTER_SENT".equals(candidate.getStage())) {
+            throw new BadRequestException("This candidate doesn't have a sent offer letter to accept yet.");
         }
 
         CreateEmployeeRequest employeeRequest = new CreateEmployeeRequest();
@@ -414,6 +498,18 @@ public class CandidateService {
         if ("REJECTED".equals(newStage)) {
             candidate.setRejectionReason(rejectionReason); // optional, per the workflow spec
         }
+    }
+
+    /** Display name for "uploaded by": the current user's linked Employee full name, falling back to their username if no Employee is linked (e.g. an admin-only login). */
+    private String currentActorName() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "system";
+        }
+        return employeeRepository.findByUser_UsernameAndDeletedFalse(authentication.getName())
+                .map(Employee::getFullName)
+                .orElse(authentication.getName());
     }
 
     private Candidate findActiveOrThrow(Long id) {

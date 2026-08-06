@@ -2,6 +2,7 @@ package com.haodaone.recruitment.controller;
 
 import com.haodaone.recruitment.dto.CandidateDTO;
 import com.haodaone.recruitment.service.CandidateService;
+import com.haodaone.recruitment.service.OfferLetterS3StorageService;
 import com.haodaone.recruitment.service.ResumeS3StorageService;
 import jakarta.validation.Valid;
 import org.springframework.core.io.InputStreamResource;
@@ -10,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,10 +21,13 @@ public class CandidateController {
 
     private final CandidateService candidateService;
     private final ResumeS3StorageService resumeStorageService;
+    private final OfferLetterS3StorageService offerLetterStorageService;
 
-    public CandidateController(CandidateService candidateService, ResumeS3StorageService resumeStorageService) {
+    public CandidateController(CandidateService candidateService, ResumeS3StorageService resumeStorageService,
+                                OfferLetterS3StorageService offerLetterStorageService) {
         this.candidateService = candidateService;
         this.resumeStorageService = resumeStorageService;
+        this.offerLetterStorageService = offerLetterStorageService;
     }
 
     @GetMapping
@@ -93,5 +98,56 @@ public class CandidateController {
     /** The resume file key isn't part of CandidateDTO (only hasResume/resumeOriginalName are, to avoid leaking storage internals) - look it up directly for the download. */
     private String resumeKeyOf(Long candidateId) {
         return candidateService.getResumeKey(candidateId);
+    }
+
+    /** HR uploads (or replaces) the offer letter document once an offer has been generated. */
+    @PostMapping(value = "/{id}/offer-letter", consumes = "multipart/form-data")
+    @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
+    public CandidateDTO uploadOfferLetter(@PathVariable Long id, @RequestPart("file") MultipartFile file) {
+        return candidateService.uploadOfferLetter(id, file);
+    }
+
+    /**
+     * Streams the currently-uploaded offer letter inline (for the browser's
+     * built-in PDF/document preview) rather than forcing a download - same
+     * bytes as downloadOfferLetter, different Content-Disposition.
+     */
+    @GetMapping("/{id}/offer-letter/preview")
+    @PreAuthorize("hasAuthority('RECRUITMENT_VIEW')")
+    public ResponseEntity<InputStreamResource> previewOfferLetter(@PathVariable Long id) {
+        CandidateDTO candidate = candidateService.getById(id);
+        InputStreamResource resource = offerLetterStorageService.retrieve(candidateService.getOfferLetterKey(id));
+        String filename = candidate.getOfferLetterOriginalName() != null ? candidate.getOfferLetterOriginalName() : "offer-letter";
+        return ResponseEntity.ok()
+                .contentType(contentTypeFor(filename))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename.replace("\"", "") + "\"")
+                .body(resource);
+    }
+
+    @GetMapping("/{id}/offer-letter")
+    @PreAuthorize("hasAuthority('RECRUITMENT_VIEW')")
+    public ResponseEntity<InputStreamResource> downloadOfferLetter(@PathVariable Long id) {
+        CandidateDTO candidate = candidateService.getById(id);
+        InputStreamResource resource = offerLetterStorageService.retrieve(candidateService.getOfferLetterKey(id));
+        String filename = candidate.getOfferLetterOriginalName() != null ? candidate.getOfferLetterOriginalName() : "offer-letter";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename.replace("\"", "") + "\"")
+                .body(resource);
+    }
+
+    /** Emails the uploaded offer letter to the candidate and moves the stage to OFFER_LETTER_SENT. Same endpoint covers the initial send and any later resend. */
+    @PostMapping("/{id}/send-offer-letter")
+    @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
+    public CandidateDTO sendOfferLetter(@PathVariable Long id) {
+        return candidateService.sendOfferLetter(id);
+    }
+
+    private MediaType contentTypeFor(String filename) {
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".pdf")) return MediaType.APPLICATION_PDF;
+        if (lower.endsWith(".doc")) return MediaType.valueOf("application/msword");
+        if (lower.endsWith(".docx")) return MediaType.valueOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

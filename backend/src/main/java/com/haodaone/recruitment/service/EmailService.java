@@ -110,20 +110,29 @@ public class EmailService {
         send(candidate.getEmail(), candidate.getFullName(), subject, body);
     }
 
-    /** To the candidate, once HR generates their offer. */
-    public void sendOfferEmail(Candidate candidate) {
-        String subject = "Your Offer from Haoda";
+    /**
+     * To the candidate, once HR uploads the signed offer letter and
+     * clicks "Send Offer Letter" (or "Resend"). The uploaded document
+     * itself travels as an email attachment - this is the only place an
+     * offer letter is emailed; generating the offer (setting
+     * offerAmount/expectedJoiningDate) no longer sends anything by
+     * itself. Returns true only when the email was actually accepted for
+     * delivery, so the caller can persist a real Sent/Failed status
+     * rather than assuming success.
+     */
+    public boolean sendOfferLetterEmail(Candidate candidate, byte[] offerLetterBytes, String offerLetterFilename) {
+        String subject = "Your Offer Letter from Haoda";
         String body = "<p>Dear " + escape(candidate.getFirstName()) + ",</p>"
-                + "<p>Congratulations! We are pleased to offer you the position of "
+                + "<p>Congratulations! Please find attached your offer letter for the position of "
                 + "<strong>" + escape(candidate.getJobOpening().getTitle()) + "</strong>.</p>"
                 + "<table style=\"border-collapse:collapse;margin:16px 0;\">"
                 + row("Position", escape(candidate.getJobOpening().getTitle()))
                 + (candidate.getOfferAmount() != null ? row("Offered CTC", candidate.getOfferAmount().toString()) : "")
                 + (candidate.getExpectedJoiningDate() != null ? row("Expected Joining Date", candidate.getExpectedJoiningDate().format(DateTimeFormatter.ofPattern("d MMMM yyyy"))) : "")
                 + "</table>"
-                + "<p>Please reply to confirm your acceptance so we can proceed with onboarding.</p>";
+                + "<p>Please review the attached offer letter and reply to confirm your acceptance so we can proceed with onboarding.</p>";
 
-        send(candidate.getEmail(), candidate.getFullName(), subject, body);
+        return sendWithAttachment(candidate.getEmail(), candidate.getFullName(), subject, body, offerLetterBytes, offerLetterFilename);
     }
 
     /** To the new hire, once accepting the offer auto-creates their employee login. */
@@ -177,6 +186,58 @@ public class EmailService {
             }
         } catch (Exception e) {
             log.error("Failed to send email to {} <{}>: {}", toName, toEmail, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Same as {@link #send} but with a single file attached (base64-encoded
+     * inline in the JSON payload, per Brevo's API) and a boolean result
+     * instead of a swallowed exception - the caller (offer letter send/
+     * resend) needs to record a real Sent/Failed status, unlike the other
+     * notification emails in this class which are fire-and-forget.
+     *
+     * When BREVO_API_KEY isn't configured, this logs and returns true
+     * rather than false: same reasoning as {@link #send} - an unconfigured
+     * environment isn't a delivery *failure*, and HR's "Send Offer
+     * Letter" action (stage change, upload, etc.) shouldn't be reported
+     * as failed just because local/dev email isn't wired up.
+     */
+    private boolean sendWithAttachment(String toEmail, String toName, String subject, String htmlBody,
+                                        byte[] attachmentBytes, String attachmentFilename) {
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            log.info("BREVO_API_KEY not configured - not sending email. To: {} <{}>, Subject: {}", toName, toEmail, subject);
+            return true;
+        }
+
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("sender", Map.of("email", fromAddress, "name", fromName));
+            payload.put("to", List.of(Map.of("email", toEmail, "name", toName != null ? toName : toEmail)));
+            payload.put("subject", subject);
+            payload.put("htmlContent", htmlBody);
+            String encodedAttachment = java.util.Base64.getEncoder().encodeToString(attachmentBytes);
+            payload.put("attachment", List.of(Map.of("content", encodedAttachment, "name", attachmentFilename)));
+
+            String json = objectMapper.writeValueAsString(payload);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(BREVO_ENDPOINT)
+                    .header("api-key", brevoApiKey)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("Sent email with attachment to {} <{}>: {}", toName, toEmail, subject);
+                return true;
+            }
+            log.error("Brevo email send failed ({}) to {} <{}>: {}", response.statusCode(), toName, toEmail, response.body());
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to send email with attachment to {} <{}>: {}", toName, toEmail, e.getMessage(), e);
+            return false;
         }
     }
 
