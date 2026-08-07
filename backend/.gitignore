@@ -1,4 +1,4 @@
-target/
+gitarget/
 *.class
 application-local.properties
 .idea/
