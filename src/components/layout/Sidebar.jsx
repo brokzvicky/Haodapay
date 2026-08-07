@@ -13,6 +13,10 @@ import {
   Building2,
   ChevronsLeft,
   ChevronsRight,
+  Wallet,
+  ListChecks,
+  FileSpreadsheet,
+  PlayCircle,
 } from 'lucide-react';
 import Logo from '../brand/Logo';
 
@@ -35,6 +39,16 @@ const NAV_SECTIONS = [
       { to: '/recruitment', icon: Briefcase, label: 'Recruitment' },
       { to: '/my-interviews', icon: CalendarClock, label: 'My Interviews' },
       { to: '/performance', icon: TrendingUp, label: 'Performance' },
+    ],
+  },
+  {
+    label: 'Payroll',
+    items: [
+      { to: '/salary', icon: Wallet, label: 'Salary Dashboard', end: true },
+      { to: '/salary/employees', icon: ListChecks, label: 'Employee Salary' },
+      { to: '/salary/structure', icon: FileSpreadsheet, label: 'Salary Structure' },
+      { to: '/salary/payroll-processing', icon: PlayCircle, label: 'Payroll Processing' },
+      { to: '/salary/reports', icon: FileBarChart, label: 'Salary Reports' },
     ],
   },
   {
