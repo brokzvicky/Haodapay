@@ -1,0 +1,145 @@
+/**
+ * HaodaOne Design Tokens
+ * ----------------------
+ * Single source of truth for the visual language. Every component should
+ * reference these variables rather than hardcoding colors/spacing/radii -
+ * that's what keeps 25+ modules feeling like one coherent product instead
+ * of a pile of independently-styled screens.
+ *
+ * Dark mode: the same token names are redefined under [data-theme="dark"]
+ * so components never need dark-mode-specific CSS of their own.
+ */
+
+:root {
+  /* ---- Brand palette ---- */
+  --hz-primary-50: #eef2ff;
+  --hz-primary-100: #e0e7ff;
+  --hz-primary-200: #c7d2fe;
+  --hz-primary-300: #a5b4fc;
+  --hz-primary-400: #818cf8;
+  --hz-primary-500: #6366f1;
+  --hz-primary-600: #4f46e5;
+  --hz-primary-700: #4338ca;
+  --hz-primary-800: #3730a3;
+  --hz-primary-900: #312e81;
+
+  --hz-accent-500: #0ea5a4;
+  --hz-accent-600: #0d9488;
+
+  /* ---- Semantic ---- */
+  --hz-success-50: #f0fdf4;
+  --hz-success-500: #16a34a;
+  --hz-success-600: #15803d;
+
+  --hz-warning-50: #fffbeb;
+  --hz-warning-500: #d97706;
+  --hz-warning-600: #b45309;
+
+  --hz-danger-50: #fef2f2;
+  --hz-danger-500: #dc2626;
+  --hz-danger-600: #b91c1c;
+
+  --hz-info-50: #f0f9ff;
+  --hz-info-500: #0284c7;
+  --hz-info-600: #0369a1;
+
+  /* ---- Neutrals (slate) ---- */
+  --hz-gray-50: #f8fafc;
+  --hz-gray-100: #f1f5f9;
+  --hz-gray-200: #e2e8f0;
+  --hz-gray-300: #cbd5e1;
+  --hz-gray-400: #94a3b8;
+  --hz-gray-500: #64748b;
+  --hz-gray-600: #475569;
+  --hz-gray-700: #334155;
+  --hz-gray-800: #1e293b;
+  --hz-gray-900: #0f172a;
+
+  /* ---- Surface / text roles ---- */
+  --hz-bg-canvas: var(--hz-gray-50);
+  --hz-bg-surface: #ffffff;
+  --hz-bg-surface-hover: var(--hz-gray-50);
+  --hz-bg-sidebar: #ffffff;
+  --hz-border: var(--hz-gray-200);
+  --hz-border-strong: var(--hz-gray-300);
+  --hz-text-primary: var(--hz-gray-900);
+  --hz-text-secondary: var(--hz-gray-500);
+  --hz-text-muted: var(--hz-gray-400);
+  --hz-text-on-primary: #ffffff;
+
+  /* ---- Typography ---- */
+  --hz-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --hz-text-xs: 0.75rem;
+  --hz-text-sm: 0.8125rem;
+  --hz-text-base: 0.9375rem;
+  --hz-text-lg: 1.0625rem;
+  --hz-text-xl: 1.25rem;
+  --hz-text-2xl: 1.5rem;
+  --hz-text-3xl: 1.875rem;
+  --hz-text-4xl: 2.25rem;
+  --hz-font-weight-normal: 400;
+  --hz-font-weight-medium: 500;
+  --hz-font-weight-semibold: 600;
+  --hz-font-weight-bold: 700;
+
+  /* ---- Spacing (4px scale) ---- */
+  --hz-space-1: 0.25rem;
+  --hz-space-2: 0.5rem;
+  --hz-space-3: 0.75rem;
+  --hz-space-4: 1rem;
+  --hz-space-5: 1.25rem;
+  --hz-space-6: 1.5rem;
+  --hz-space-8: 2rem;
+  --hz-space-10: 2.5rem;
+  --hz-space-12: 3rem;
+  --hz-space-16: 4rem;
+
+  /* ---- Radii ---- */
+  --hz-radius-sm: 0.375rem;
+  --hz-radius-md: 0.625rem;
+  --hz-radius-lg: 1rem;
+  --hz-radius-xl: 1.25rem;
+  --hz-radius-full: 9999px;
+
+  /* ---- Shadows (soft, layered - not harsh drop shadows) ---- */
+  --hz-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --hz-shadow-md: 0 4px 12px -3px rgba(15, 23, 42, 0.09), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --hz-shadow-lg: 0 12px 28px -6px rgba(15, 23, 42, 0.12), 0 4px 10px -4px rgba(15, 23, 42, 0.08);
+  --hz-shadow-xl: 0 20px 48px -10px rgba(15, 23, 42, 0.16);
+  --hz-shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.18);
+  --hz-shadow-primary: 0 10px 24px -8px rgba(79, 70, 229, 0.45);
+
+  /* ---- Brand gradients ---- */
+  --hz-gradient-primary: linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #4338ca 100%);
+  --hz-gradient-accent: linear-gradient(135deg, #0ea5a4 0%, #0d9488 100%);
+  --hz-gradient-surface: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0) 100%);
+
+  /* ---- Layout ---- */
+  --hz-sidebar-width: 264px;
+  --hz-sidebar-width-collapsed: 76px;
+  --hz-topbar-height: 64px;
+
+  /* ---- Motion ---- */
+  --hz-transition-fast: 120ms ease;
+  --hz-transition-base: 200ms ease;
+  --hz-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme='dark'] {
+  --hz-bg-canvas: #0b1120;
+  --hz-bg-surface: #111827;
+  --hz-bg-surface-hover: #1a2333;
+  --hz-bg-sidebar: #0f1729;
+  --hz-border: #1f2937;
+  --hz-border-strong: #2c3a4f;
+  --hz-text-primary: #f1f5f9;
+  --hz-text-secondary: #94a3b8;
+  --hz-text-muted: #64748b;
+
+  --hz-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --hz-shadow-md: 0 4px 12px -3px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --hz-shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.5);
+  --hz-shadow-xl: 0 20px 48px -10px rgba(0, 0, 0, 0.6);
+  --hz-shadow-primary: 0 10px 26px -8px rgba(99, 102, 241, 0.55);
+  --hz-gradient-surface: linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 100%);
+}

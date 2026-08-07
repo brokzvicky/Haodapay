@@ -1,0 +1,78 @@
+/**
+ * Base layer - resets and platform-wide conventions layered on top of the
+ * customized Bootstrap + tokens. Kept intentionally small: most visual
+ * decisions belong in tokens.css or per-component CSS, not here.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--hz-bg-canvas);
+  color: var(--hz-text-primary);
+  font-family: var(--hz-font-sans);
+  font-size: var(--hz-text-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Enterprise apps live in dense screens for hours at a time - a visible,
+   consistent focus ring matters more than it does on a marketing site. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--hz-shadow-focus);
+  border-radius: var(--hz-radius-sm);
+}
+
+/* Slim, unobtrusive scrollbars - most enterprise SaaS products style these
+   rather than leaving the OS default, since dense layouts show them a lot. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hz-gray-300);
+  border-radius: var(--hz-radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hz-gray-400);
+}
+
+.text-muted-hz {
+  color: var(--hz-text-muted) !important;
+}
+.text-secondary-hz {
+  color: var(--hz-text-secondary) !important;
+}
+
+.hz-surface {
+  background: var(--hz-bg-surface);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-lg);
+  box-shadow: var(--hz-shadow-sm);
+}
+
+@keyframes hz-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
