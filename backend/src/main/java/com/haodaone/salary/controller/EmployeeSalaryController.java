@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Employee Salary List + Salary Details. See SalaryStructureController for the authorization note that applies to this whole module in this phase. */
+/** Employee Salary List + Salary Details. */
 @RestController
 @RequestMapping("/api/salary/employees")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAuthority('SALARY_VIEW')")
 public class EmployeeSalaryController {
 
     private final EmployeeSalaryService employeeSalaryService;

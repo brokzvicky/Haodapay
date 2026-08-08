@@ -14,6 +14,11 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     List<LeaveRequest> findAllByStatusOrderByStartDateAsc(String status);
 
+    /** Same as findAllByStatusOrderByStartDateAsc but scoped to a specific
+     *  set of employees - powers a manager's "my team" approval queue so
+     *  they see their direct reports' requests, not the whole company's. */
+    List<LeaveRequest> findAllByEmployeeIdInAndStatusOrderByStartDateAsc(List<Long> employeeIds, String status);
+
     List<LeaveRequest> findAllByOrderByStartDateDesc();
 
     /** Approved days for one employee/leaveType/year - the "used" half of the balance calculation (see LeaveBalance javadoc). */

@@ -55,6 +55,19 @@ public class LeaveRequestService {
         return requests.stream().map(LeaveRequestDTO::from).toList();
     }
 
+    /** Same shape as listAll but scoped to a specific set of employee IDs -
+     *  used for a manager's team-scoped approval queue. Empty employeeIds
+     *  returns an empty list rather than falling back to "all", since an
+     *  empty team should mean nothing to approve, not everything. */
+    public List<LeaveRequestDTO> listForEmployees(List<Long> employeeIds, String status) {
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return List.of();
+        }
+        String normalizedStatus = (status == null || status.isBlank()) ? "PENDING" : status.toUpperCase();
+        return leaveRequestRepository.findAllByEmployeeIdInAndStatusOrderByStartDateAsc(employeeIds, normalizedStatus)
+                .stream().map(LeaveRequestDTO::from).toList();
+    }
+
     public List<LeaveRequestDTO> listByEmployee(Long employeeId) {
         return leaveRequestRepository.findAllByEmployeeIdOrderByStartDateDesc(employeeId).stream()
                 .map(LeaveRequestDTO::from)

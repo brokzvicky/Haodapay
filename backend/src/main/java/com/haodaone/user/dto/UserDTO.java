@@ -4,6 +4,8 @@ import com.haodaone.user.entity.User;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class UserDTO {
     private Long id;
@@ -14,6 +16,7 @@ public class UserDTO {
     private boolean mustChangePassword;
     private LocalDateTime lastLoginAt;
     private List<String> roles;
+    private Set<String> permissions;
 
     public static UserDTO from(User user) {
         UserDTO dto = new UserDTO();
@@ -25,6 +28,15 @@ public class UserDTO {
         dto.mustChangePassword = user.isMustChangePassword();
         dto.lastLoginAt = user.getLastLoginAt();
         dto.roles = user.getRoles().stream().map(com.haodaone.user.entity.Role::getName).toList();
+        // Aggregated across every role the user holds - this is what the
+        // frontend uses to decide what to show (e.g. hide the Payroll nav
+        // section for a user without SALARY_VIEW), rather than checking
+        // role names directly, since custom roles (via Settings > Roles)
+        // won't be named "HR_ADMIN" but can still carry the same permission.
+        dto.permissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(com.haodaone.user.entity.Permission::getCode)
+                .collect(Collectors.toSet());
         return dto;
     }
 
@@ -58,5 +70,9 @@ public class UserDTO {
 
     public List<String> getRoles() {
         return roles;
+    }
+
+    public Set<String> getPermissions() {
+        return permissions;
     }
 }
