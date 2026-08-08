@@ -1,21 +1,69 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, UserCheck, CalendarOff, FileClock, Inbox, Cake, Megaphone } from 'lucide-react';
+import { Users, UserCheck, CalendarOff, FileClock, Inbox, Cake, Megaphone, Check, X } from 'lucide-react';
 import { dashboardApi } from '../api/endpoints/dashboard';
+import { leaveRequestsApi } from '../api/endpoints/leave';
 import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
 import EmptyState from '../components/ui/EmptyState';
-import { SkeletonCard } from '../components/ui/Skeleton';
+import { SkeletonCard, SkeletonText } from '../components/ui/Skeleton';
 import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
   const firstName = user?.fullName?.split(' ')[0];
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: dashboardApi.summary,
+  });
+
+  // Approval Queue needs LEAVE_VIEW, which not every role that can see the
+  // Dashboard has (Employee, for instance) - skip the request entirely
+  // rather than firing it and eating a 403 the person can't act on anyway.
+  const canViewApprovals = hasPermission('LEAVE_VIEW') || hasPermission('LEAVE_APPROVE');
+  // LEAVE_MANAGE (HR/Admin) sees every pending request org-wide; a Manager
+  // has LEAVE_APPROVE without LEAVE_MANAGE and should only see their own
+  // direct reports' requests - Phase 1/2 flagged that this wasn't actually
+  // scoped yet. /api/dashboard/my-team is the fix for that path.
+  const isTeamScoped = hasPermission('LEAVE_APPROVE') && !hasPermission('LEAVE_MANAGE');
+
+  const {
+    data: pendingLeave,
+    isLoading: pendingLeaveLoading,
+    isError: pendingLeaveError,
+    refetch: refetchPendingLeave,
+  } = useQuery({
+    queryKey: ['leave-requests', 'PENDING'],
+    queryFn: () => leaveRequestsApi.list('PENDING'),
+    enabled: canViewApprovals && !isTeamScoped,
+  });
+
+  const {
+    data: myTeam,
+    isLoading: myTeamLoading,
+    isError: myTeamError,
+    refetch: refetchMyTeam,
+  } = useQuery({
+    queryKey: ['dashboard-my-team'],
+    queryFn: dashboardApi.myTeam,
+    enabled: isTeamScoped,
+  });
+
+  const approvalQueue = isTeamScoped ? myTeam?.pendingApprovals : pendingLeave;
+  const approvalQueueLoading = isTeamScoped ? myTeamLoading : pendingLeaveLoading;
+  const approvalQueueError = isTeamScoped ? myTeamError : pendingLeaveError;
+  const refetchApprovalQueue = isTeamScoped ? refetchMyTeam : refetchPendingLeave;
+
+  const decideLeave = useMutation({
+    mutationFn: ({ id, approve }) => (approve ? leaveRequestsApi.approve(id) : leaveRequestsApi.reject(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-my-team'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
   });
 
   const kpis = data
@@ -122,42 +170,162 @@ export default function Dashboard() {
           </Card>
         </div>
         <div className="col-12 col-xl-4">
-          <Card hoverable title="Approval Queue" subtitle="Things waiting on you">
-            <EmptyState icon={Inbox} title="Nothing pending" description="Leave requests, corrections, and approvals will surface here." />
+          <Card hoverable title="Approval Queue" subtitle={isTeamScoped ? "Your team's requests" : 'Things waiting on you'}>
+            {!canViewApprovals && (
+              <EmptyState icon={Inbox} title="Nothing to approve" description="You don't currently hold approval permissions." />
+            )}
+            {canViewApprovals && approvalQueueError && (
+              <ErrorState description="Couldn't load pending requests." onRetry={refetchApprovalQueue} />
+            )}
+            {canViewApprovals && approvalQueueLoading && <SkeletonText lines={3} />}
+            {canViewApprovals && !approvalQueueLoading && !approvalQueueError && (!approvalQueue || approvalQueue.length === 0) && (
+              <EmptyState
+                icon={Inbox}
+                title="Nothing pending"
+                description={isTeamScoped ? "None of your direct reports have pending requests." : 'Leave requests, corrections, and approvals will surface here.'}
+              />
+            )}
+            {canViewApprovals && !approvalQueueLoading && !approvalQueueError && approvalQueue?.length > 0 && (
+              <div className="d-flex flex-column gap-3">
+                {approvalQueue.slice(0, 5).map((req) => (
+                  <div key={req.id} className="d-flex align-items-start justify-content-between gap-2">
+                    <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
+                      <Avatar name={req.employeeName} size="sm" />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>
+                          {req.employeeName}
+                        </div>
+                        <div className="text-truncate" style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
+                          {req.leaveTypeName} · {req.days}d · {new Date(req.startDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="d-flex gap-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => decideLeave.mutate({ id: req.id, approve: true })}
+                        disabled={decideLeave.isPending}
+                        className="hz-icon-btn d-flex align-items-center justify-content-center border-0"
+                        style={{ width: 28, height: 28, color: 'var(--hz-success-600)' }}
+                        aria-label={`Approve ${req.employeeName}'s leave request`}
+                      >
+                        <Check size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => decideLeave.mutate({ id: req.id, approve: false })}
+                        disabled={decideLeave.isPending}
+                        className="hz-icon-btn d-flex align-items-center justify-content-center border-0"
+                        style={{ width: 28, height: 28, color: 'var(--hz-danger-600)' }}
+                        aria-label={`Reject ${req.employeeName}'s leave request`}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {approvalQueue.length > 5 && (
+                  <Link to="/leave" className="text-decoration-none" style={{ fontSize: 12, fontWeight: 600, color: 'var(--hz-primary-600)' }}>
+                    +{approvalQueue.length - 5} more waiting →
+                  </Link>
+                )}
+              </div>
+            )}
           </Card>
         </div>
       </div>
 
       <div className="row g-3">
         <div className="col-12 col-xl-4">
-          <Card hoverable title="Recent Joiners">
-            {isLoading && <div className="p-2" />}
-            {!isLoading && (!data?.recentJoiners || data.recentJoiners.length === 0) && <EmptyState icon={Users} title="No recent joiners" />}
-            {!isLoading && data?.recentJoiners?.length > 0 && (
-              <div className="d-flex flex-column gap-3">
-                {data.recentJoiners.map((emp) => (
-                  <Link key={emp.id} to={`/employees/${emp.id}`} className="hz-joiner-row d-flex align-items-center gap-2 text-decoration-none p-1 rounded-3">
-                    <Avatar name={emp.fullName} size="sm" />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>{emp.fullName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
-                        {emp.designationTitle || '—'} · joined {new Date(emp.dateOfJoining).toLocaleDateString()}
+          {isTeamScoped ? (
+            <Card hoverable title="My Team" subtitle={myTeam?.teamMembers ? `${myTeam.teamMembers.length} direct reports` : undefined}>
+              {myTeamLoading && <SkeletonText lines={3} />}
+              {!myTeamLoading && myTeamError && <ErrorState description="Couldn't load your team." onRetry={refetchMyTeam} />}
+              {!myTeamLoading && !myTeamError && (!myTeam?.teamMembers || myTeam.teamMembers.length === 0) && (
+                <EmptyState icon={Users} title="No direct reports" description="Employees reporting to you will show up here." />
+              )}
+              {!myTeamLoading && !myTeamError && myTeam?.teamMembers?.length > 0 && (
+                <div className="d-flex flex-column gap-3">
+                  {myTeam.teamMembers.map((emp) => (
+                    <Link key={emp.id} to={`/employees/${emp.id}`} className="hz-joiner-row d-flex align-items-center gap-2 text-decoration-none p-1 rounded-3">
+                      <Avatar name={emp.fullName} size="sm" />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>{emp.fullName}</div>
+                        <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>{emp.designationTitle || '—'}</div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ) : (
+            <Card hoverable title="Recent Joiners">
+              {isLoading && <div className="p-2" />}
+              {!isLoading && (!data?.recentJoiners || data.recentJoiners.length === 0) && <EmptyState icon={Users} title="No recent joiners" />}
+              {!isLoading && data?.recentJoiners?.length > 0 && (
+                <div className="d-flex flex-column gap-3">
+                  {data.recentJoiners.map((emp) => (
+                    <Link key={emp.id} to={`/employees/${emp.id}`} className="hz-joiner-row d-flex align-items-center gap-2 text-decoration-none p-1 rounded-3">
+                      <Avatar name={emp.fullName} size="sm" />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>{emp.fullName}</div>
+                        <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
+                          {emp.designationTitle || '—'} · joined {new Date(emp.dateOfJoining).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+        </div>
+        <div className="col-12 col-xl-4">
+          <Card hoverable title="Birthdays" subtitle="Next 7 days">
+            {isLoading && <SkeletonText lines={2} />}
+            {!isLoading && (!data?.upcomingBirthdays || data.upcomingBirthdays.length === 0) && (
+              <EmptyState icon={Cake} title="No birthdays this week" />
+            )}
+            {!isLoading && data?.upcomingBirthdays?.length > 0 && (
+              <div className="d-flex flex-column gap-3">
+                {data.upcomingBirthdays.map((emp) => {
+                  const dob = new Date(emp.dateOfBirth);
+                  const isToday =
+                    dob.getMonth() === new Date().getMonth() && dob.getDate() === new Date().getDate();
+                  return (
+                    <Link
+                      key={emp.employeeId}
+                      to={`/employees/${emp.employeeId}`}
+                      className="hz-joiner-row d-flex align-items-center gap-2 text-decoration-none p-1 rounded-3"
+                    >
+                      <Avatar name={emp.fullName} size="sm" />
+                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>
+                          {emp.fullName}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
+                          {dob.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      {isToday && (
+                        <span style={{ fontSize: 16 }} title="Today!">
+                          🎂
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </Card>
         </div>
         <div className="col-12 col-xl-4">
-          <Card hoverable title="Birthdays" subtitle="This week">
-            <EmptyState icon={Cake} title="No birthdays this week" />
-          </Card>
-        </div>
-        <div className="col-12 col-xl-4">
           <Card hoverable title="Announcements">
-            <EmptyState icon={Megaphone} title="No announcements" description="Org-wide announcements will post here." />
+            <EmptyState
+              icon={Megaphone}
+              title="Not set up yet"
+              description="Org-wide announcements aren't wired to a backend module yet - this card is a placeholder, not an empty inbox."
+            />
           </Card>
         </div>
       </div>
