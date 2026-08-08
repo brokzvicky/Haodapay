@@ -54,6 +54,17 @@ export function AuthProvider({ children }) {
 
   const hasAnyRole = useCallback((roleNames) => roleNames.some((r) => user?.roles?.includes(r)), [user]);
 
+  // Prefer this over hasRole/hasAnyRole for showing/hiding UI - permission
+  // codes are aggregated across whatever roles the user holds, so this
+  // still works correctly for a custom role built in Settings > Roles that
+  // isn't named "HR_ADMIN" but was granted the same permissions.
+  const hasPermission = useCallback((code) => !!user?.permissions?.includes(code), [user]);
+
+  const hasAnyPermission = useCallback(
+    (codes) => codes.some((c) => user?.permissions?.includes(c)),
+    [user]
+  );
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -62,6 +73,8 @@ export function AuthProvider({ children }) {
     logout,
     hasRole,
     hasAnyRole,
+    hasPermission,
+    hasAnyPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

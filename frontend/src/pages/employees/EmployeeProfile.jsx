@@ -13,6 +13,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import { SkeletonText } from '../../components/ui/Skeleton';
 import { statusMeta, STATUS_META, SELECTABLE_STATUSES, EMPLOYMENT_TYPE_LABEL } from './statusMeta';
 import { leaveStatusMeta } from '../leave/leaveStatusMeta';
+import { useBreadcrumbLabel } from '../../components/layout/BreadcrumbContext';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -30,6 +31,8 @@ export default function EmployeeProfile() {
     queryKey: ['employee', id],
     queryFn: () => employeesApi.getById(id),
   });
+
+  useBreadcrumbLabel(employee?.fullName);
 
   const changeStatus = useMutation({
     mutationFn: (status) => employeesApi.updateStatus(id, status),

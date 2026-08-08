@@ -11,6 +11,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import { SkeletonText } from '../../components/ui/Skeleton';
 import CandidateDetailModal from './CandidateDetailModal';
+import { useBreadcrumbLabel } from '../../components/layout/BreadcrumbContext';
 
 const STAGE_VARIANT = {
   APPLIED: 'neutral', SHORTLISTED: 'info', HOLD: 'warning',
@@ -30,6 +31,8 @@ export default function CandidatePipeline() {
 
   const { data: openings } = useQuery({ queryKey: ['job-openings'], queryFn: jobOpeningsApi.list });
   const opening = openings?.find((o) => String(o.id) === jobOpeningId);
+
+  useBreadcrumbLabel(opening?.title);
 
   const { data: candidates, isLoading, isError, refetch } = useQuery({
     queryKey: ['candidates', jobOpeningId],

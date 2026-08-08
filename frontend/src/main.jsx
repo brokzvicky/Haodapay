@@ -12,6 +12,7 @@ import './components/ui/components.css';
 
 import { queryClient } from './api/queryClient';
 import { AuthProvider } from './auth/AuthContext';
+import { ToastProvider } from './components/ui/Toast';
 import App from './App.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -19,7 +20,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </BrowserRouter>

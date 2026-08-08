@@ -19,6 +19,12 @@ import CareersList from './pages/careers/CareersList';
 import JobApply from './pages/careers/JobApply';
 import PerformanceHub from './pages/performance/PerformanceHub';
 import Reports from './pages/reports/Reports';
+import SalaryDashboard from './pages/salary/SalaryDashboard';
+import EmployeeSalaryList from './pages/salary/EmployeeSalaryList';
+import SalaryStructurePage from './pages/salary/SalaryStructurePage';
+import PayrollProcessing from './pages/salary/PayrollProcessing';
+import SalaryDetails from './pages/salary/SalaryDetails';
+import SalaryReports from './pages/salary/SalaryReports';
 import SettingsUsers from './pages/SettingsUsers';
 import SettingsOrganization from './pages/SettingsOrganization';
 import SettingsLeave from './pages/SettingsLeave';
@@ -51,6 +57,12 @@ export default function App() {
           <Route path="recruitment/:jobOpeningId" element={<CandidatePipeline />} />
           <Route path="my-interviews" element={<MyInterviews />} />
           <Route path="performance" element={<PerformanceHub />} />
+          <Route path="salary" element={<SalaryDashboard />} />
+          <Route path="salary/employees" element={<EmployeeSalaryList />} />
+          <Route path="salary/employees/:employeeId" element={<SalaryDetails />} />
+          <Route path="salary/structure" element={<SalaryStructurePage />} />
+          <Route path="salary/payroll-processing" element={<PayrollProcessing />} />
+          <Route path="salary/reports" element={<SalaryReports />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings/users" element={<SettingsUsers />} />
           <Route path="settings/organization" element={<SettingsOrganization />} />

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X } from 'lucide-react';
 import { employeesApi } from '../../api/endpoints/employees';
 import { departmentsApi, designationsApi, teamsApi } from '../../api/endpoints/organization';
 import Button from '../../components/ui/Button';
+import Dialog from '../../components/ui/Dialog';
+import FormField from '../../components/ui/FormField';
 
 const EMPTY_FORM = {
   firstName: '',
@@ -62,106 +63,93 @@ export default function CreateEmployeeModal({ onClose }) {
   }
 
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-      style={{ background: 'rgba(15, 23, 42, 0.45)', zIndex: 50, padding: 16 }}
-      onClick={onClose}
+    <Dialog
+      open
+      onClose={onClose}
+      title="Onboard Employee"
+      description="An employee code is generated automatically"
+      size="lg"
     >
-      <div
-        className="hz-surface d-flex flex-column"
-        style={{ width: 640, maxHeight: '90vh', padding: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="d-flex align-items-center justify-content-between p-4 pb-3" style={{ borderBottom: '1px solid var(--hz-border)' }}>
-          <div>
-            <h3 style={{ fontSize: 'var(--hz-text-lg)', fontWeight: 600, margin: 0 }}>Onboard Employee</h3>
-            <p className="text-secondary-hz mb-0" style={{ fontSize: 'var(--hz-text-sm)' }}>
-              An employee code is generated automatically
-            </p>
+      <form onSubmit={handleSubmit}>
+        {error && (
+          <div
+            className="mb-3 px-3 py-2"
+            style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}
+          >
+            {error}
           </div>
-          <button className="btn btn-light border-0 p-1" onClick={onClose}>
-            <X size={18} />
-          </button>
+        )}
+
+        <SectionLabel>Personal</SectionLabel>
+        <div className="row g-3 mb-3">
+          <FormField col={6} label="First Name" value={form.firstName} onChange={(v) => set('firstName', v)} required />
+          <FormField col={6} label="Last Name" value={form.lastName} onChange={(v) => set('lastName', v)} required />
+          <FormField col={6} label="Email" type="email" value={form.email} onChange={(v) => set('email', v)} required />
+          <FormField col={6} label="Phone" value={form.phone} onChange={(v) => set('phone', v)} />
+          <FormField col={6} label="Date of Birth" type="date" value={form.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} />
+          <FormField col={6} label="Gender" value={form.gender} onChange={(v) => set('gender', v)} />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 overflow-auto">
-          {error && (
-            <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
-              {error}
-            </div>
-          )}
+        <SectionLabel>Employment</SectionLabel>
+        <div className="row g-3 mb-3">
+          <FormField col={6} label="Date of Joining" type="date" value={form.dateOfJoining} onChange={(v) => set('dateOfJoining', v)} required />
+          <FormField as="select" col={6} label="Employment Type" value={form.employmentType} onChange={(v) => set('employmentType', v)}>
+            <option value="FULL_TIME">Full-Time</option>
+            <option value="PART_TIME">Part-Time</option>
+            <option value="CONTRACT">Contract</option>
+            <option value="INTERN">Intern</option>
+          </FormField>
+          <FormField as="select" col={6} label="Department" value={form.departmentId} onChange={(v) => set('departmentId', v)}>
+            <option value="">—</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </FormField>
+          <FormField as="select" col={6} label="Designation" value={form.designationId} onChange={(v) => set('designationId', v)}>
+            <option value="">—</option>
+            {designations.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.title}
+              </option>
+            ))}
+          </FormField>
+          <FormField as="select" col={6} label="Team" value={form.teamId} onChange={(v) => set('teamId', v)}>
+            <option value="">—</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </FormField>
+          <FormField as="select" col={6} label="Reporting Manager" value={form.reportingManagerId} onChange={(v) => set('reportingManagerId', v)}>
+            <option value="">—</option>
+            {employees.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.fullName}
+              </option>
+            ))}
+          </FormField>
+        </div>
 
-          <SectionLabel>Personal</SectionLabel>
-          <div className="row g-3 mb-3">
-            <Field col={6} label="First Name" value={form.firstName} onChange={(v) => set('firstName', v)} required />
-            <Field col={6} label="Last Name" value={form.lastName} onChange={(v) => set('lastName', v)} required />
-            <Field col={6} label="Email" type="email" value={form.email} onChange={(v) => set('email', v)} required />
-            <Field col={6} label="Phone" value={form.phone} onChange={(v) => set('phone', v)} />
-            <Field col={6} label="Date of Birth" type="date" value={form.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} />
-            <Field col={6} label="Gender" value={form.gender} onChange={(v) => set('gender', v)} />
-          </div>
+        <SectionLabel>Emergency Contact</SectionLabel>
+        <div className="row g-3 mb-1">
+          <FormField col={12} label="Address" value={form.address} onChange={(v) => set('address', v)} />
+          <FormField col={6} label="Contact Name" value={form.emergencyContactName} onChange={(v) => set('emergencyContactName', v)} />
+          <FormField col={6} label="Contact Phone" value={form.emergencyContactPhone} onChange={(v) => set('emergencyContactPhone', v)} />
+        </div>
 
-          <SectionLabel>Employment</SectionLabel>
-          <div className="row g-3 mb-3">
-            <Field col={6} label="Date of Joining" type="date" value={form.dateOfJoining} onChange={(v) => set('dateOfJoining', v)} required />
-            <SelectField col={6} label="Employment Type" value={form.employmentType} onChange={(v) => set('employmentType', v)}>
-              <option value="FULL_TIME">Full-Time</option>
-              <option value="PART_TIME">Part-Time</option>
-              <option value="CONTRACT">Contract</option>
-              <option value="INTERN">Intern</option>
-            </SelectField>
-            <SelectField col={6} label="Department" value={form.departmentId} onChange={(v) => set('departmentId', v)}>
-              <option value="">—</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField col={6} label="Designation" value={form.designationId} onChange={(v) => set('designationId', v)}>
-              <option value="">—</option>
-              {designations.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.title}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField col={6} label="Team" value={form.teamId} onChange={(v) => set('teamId', v)}>
-              <option value="">—</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField col={6} label="Reporting Manager" value={form.reportingManagerId} onChange={(v) => set('reportingManagerId', v)}>
-              <option value="">—</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.fullName}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-
-          <SectionLabel>Emergency Contact</SectionLabel>
-          <div className="row g-3 mb-1">
-            <Field col={12} label="Address" value={form.address} onChange={(v) => set('address', v)} />
-            <Field col={6} label="Contact Name" value={form.emergencyContactName} onChange={(v) => set('emergencyContactName', v)} />
-            <Field col={6} label="Contact Phone" value={form.emergencyContactPhone} onChange={(v) => set('emergencyContactPhone', v)} />
-          </div>
-
-          <div className="d-flex justify-content-end gap-2 mt-4">
-            <Button variant="secondary" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={createEmployee.isPending}>
-              Onboard Employee
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="d-flex justify-content-end gap-2 mt-4">
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={createEmployee.isPending}>
+            Onboard Employee
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -173,29 +161,5 @@ function SectionLabel({ children }) {
     >
       {children}
     </p>
-  );
-}
-
-function Field({ label, value, onChange, type = 'text', required, col = 6 }) {
-  return (
-    <div className={`col-${col}`}>
-      <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>
-        {label}
-      </label>
-      <input type={type} className="form-control" value={value} onChange={(e) => onChange(e.target.value)} required={required} />
-    </div>
-  );
-}
-
-function SelectField({ label, value, onChange, col = 6, children }) {
-  return (
-    <div className={`col-${col}`}>
-      <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>
-        {label}
-      </label>
-      <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-        {children}
-      </select>
-    </div>
   );
 }

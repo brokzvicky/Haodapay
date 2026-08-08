@@ -261,3 +261,243 @@
   justify-content: center;
   background: var(--hz-bg-canvas);
 }
+
+/* ---- Toasts ---- */
+.hz-toast-stack {
+  position: fixed;
+  top: var(--hz-space-4);
+  right: var(--hz-space-4);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-space-2);
+  width: min(360px, calc(100vw - 2rem));
+}
+
+.hz-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--hz-space-2);
+  background: var(--hz-bg-surface);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-md);
+  box-shadow: var(--hz-shadow-lg);
+  padding: var(--hz-space-3) var(--hz-space-3);
+  animation: hz-toast-in 220ms var(--hz-ease-spring);
+}
+
+.hz-toast__message {
+  flex: 1;
+  font-size: var(--hz-text-sm);
+  color: var(--hz-text-primary);
+  line-height: 1.4;
+}
+
+.hz-toast__close {
+  border: none;
+  background: transparent;
+  color: var(--hz-text-muted);
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 2px;
+  border-radius: var(--hz-radius-sm);
+}
+.hz-toast__close:hover {
+  background: var(--hz-gray-100);
+  color: var(--hz-text-primary);
+}
+
+@keyframes hz-toast-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Breadcrumbs ---- */
+.hz-breadcrumb-link {
+  font-size: var(--hz-text-xs);
+  font-weight: 500;
+  color: var(--hz-text-secondary);
+  text-decoration: none;
+  transition: color var(--hz-transition-fast);
+}
+.hz-breadcrumb-link:hover {
+  color: var(--hz-primary-700);
+}
+.hz-breadcrumb-current {
+  font-size: var(--hz-text-xs);
+  font-weight: 600;
+  color: var(--hz-text-primary);
+}
+
+/* ---- Global search dropdown ---- */
+.hz-search-panel {
+  box-shadow: var(--hz-shadow-xl);
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px 0;
+  animation: hz-search-panel-in 140ms var(--hz-ease-spring);
+}
+@keyframes hz-search-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hz-search-row {
+  transition: background var(--hz-transition-fast);
+}
+.hz-search-row:hover {
+  background: var(--hz-gray-50) !important;
+}
+
+/* ---- Sidebar favorite toggle ---- */
+.hz-sidebar-fav-btn {
+  opacity: 0;
+  color: var(--hz-text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: var(--hz-radius-sm);
+  transition: opacity var(--hz-transition-fast), color var(--hz-transition-fast), background var(--hz-transition-fast);
+}
+.hz-sidebar-item:hover .hz-sidebar-fav-btn,
+.hz-sidebar-fav-btn[aria-pressed='true'] {
+  opacity: 1;
+}
+.hz-sidebar-fav-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.hz-sidebar-fav-btn[aria-pressed='true'] {
+  color: var(--hz-warning-500);
+}
+/* On top of the active item's colored gradient, muted-gray reads poorly -
+   switch to translucent white so the star stays legible either way. */
+.hz-nav-active + .hz-sidebar-fav-btn {
+  color: rgba(255, 255, 255, 0.85);
+}
+.hz-nav-active + .hz-sidebar-fav-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.hz-nav-active + .hz-sidebar-fav-btn[aria-pressed='true'] {
+  color: #fde68a;
+}
+
+/* ============================================================
+   Phase 4 - Dialog / Drawer / Table / FormField primitives
+   ============================================================ */
+
+/* ---- Dialog + Drawer shared chrome ---- */
+.hz-dialog-backdrop {
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 1000;
+  padding: 16px;
+  animation: hz-backdrop-in 140ms ease;
+}
+@keyframes hz-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hz-dialog {
+  background: var(--hz-bg-surface);
+  border-radius: var(--hz-radius-xl);
+  box-shadow: var(--hz-shadow-xl);
+  max-height: 90vh;
+  animation: hz-dialog-in 180ms var(--hz-ease-spring);
+}
+@keyframes hz-dialog-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hz-drawer {
+  background: var(--hz-bg-surface);
+  box-shadow: var(--hz-shadow-xl);
+  animation: hz-drawer-in 220ms var(--hz-ease-spring);
+}
+@keyframes hz-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.hz-dialog__header {
+  padding: var(--hz-space-5) var(--hz-space-6);
+  border-bottom: 1px solid var(--hz-border);
+  flex-shrink: 0;
+}
+.hz-dialog__title {
+  font-size: var(--hz-text-lg);
+  font-weight: 600;
+  margin: 0;
+  color: var(--hz-text-primary);
+}
+.hz-dialog__description {
+  font-size: var(--hz-text-sm);
+  color: var(--hz-text-secondary);
+  margin: 4px 0 0;
+}
+.hz-dialog__close {
+  border: none;
+  background: transparent;
+  color: var(--hz-text-muted);
+  padding: 6px;
+  border-radius: var(--hz-radius-md);
+  flex-shrink: 0;
+  transition: background var(--hz-transition-fast), color var(--hz-transition-fast);
+}
+.hz-dialog__close:hover {
+  background: var(--hz-gray-100);
+  color: var(--hz-text-primary);
+}
+.hz-dialog__body {
+  padding: var(--hz-space-6);
+}
+.hz-dialog__footer {
+  padding: var(--hz-space-4) var(--hz-space-6);
+  border-top: 1px solid var(--hz-border);
+  flex-shrink: 0;
+}
+
+@media (max-width: 575.98px) {
+  .hz-drawer {
+    max-width: 100% !important;
+  }
+}
+
+/* ---- Table ---- */
+.hz-table thead th {
+  font-size: var(--hz-text-xs);
+  font-weight: 600;
+  color: var(--hz-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom-color: var(--hz-border);
+  white-space: nowrap;
+}
+.hz-table tbody td {
+  font-size: var(--hz-text-sm);
+  border-bottom-color: var(--hz-border);
+}
+.hz-table-row--clickable {
+  cursor: pointer;
+  transition: background var(--hz-transition-fast);
+}
+.hz-table-row--clickable:hover {
+  background: var(--hz-gray-50);
+}
+
+/* ---- FormField ---- */
+.hz-form-label {
+  display: block;
+  font-size: var(--hz-text-sm);
+  font-weight: 500;
+  color: var(--hz-text-primary);
+  margin-bottom: 6px;
+}
+.hz-form-hint {
+  font-size: 12px;
+  color: var(--hz-text-muted);
+  margin: 4px 0 0;
+}
+.hz-form-error {
+  font-size: 12px;
+  color: var(--hz-danger-600);
+  margin: 4px 0 0;
+}

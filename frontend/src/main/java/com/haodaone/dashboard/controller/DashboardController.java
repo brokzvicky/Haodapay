@@ -1,0 +1,130 @@
+package com.haodaone.dashboard.controller;
+
+import com.haodaone.dashboard.dto.DashboardSummaryDTO;
+import com.haodaone.dashboard.dto.TeamDashboardDTO;
+import com.haodaone.employee.dto.EmployeeSummaryDTO;
+import com.haodaone.employee.entity.Employee;
+import com.haodaone.employee.repository.EmployeeRepository;
+import com.haodaone.leave.service.LeaveRequestService;
+import com.haodaone.org.repository.DepartmentRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
+import java.time.MonthDay;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * Powers the Dashboard "Command Center". Deliberately just aggregation
+ * queries against existing repositories rather than a separate reporting
+ * datastore - fine at Phase 1 scale; revisit with materialized views or a
+ * read replica if/when this becomes a real bottleneck.
+ */
+@RestController
+@RequestMapping("/api/dashboard")
+public class DashboardController {
+
+    private static final int BIRTHDAY_LOOKAHEAD_DAYS = 7;
+
+    private final EmployeeRepository employeeRepository;
+    private final DepartmentRepository departmentRepository;
+    private final LeaveRequestService leaveRequestService;
+
+    public DashboardController(EmployeeRepository employeeRepository, DepartmentRepository departmentRepository,
+                                LeaveRequestService leaveRequestService) {
+        this.employeeRepository = employeeRepository;
+        this.departmentRepository = departmentRepository;
+        this.leaveRequestService = leaveRequestService;
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAuthority('EMPLOYEE_VIEW')")
+    public DashboardSummaryDTO summary() {
+        long total = employeeRepository.countByDeletedFalse();
+        long active = employeeRepository.countByStatusAndDeletedFalse("Active");
+        long onLeave = employeeRepository.countByStatusAndDeletedFalse("On Leave");
+        long noticePeriod = employeeRepository.countByStatusAndDeletedFalse("Notice Period");
+        long resigned = employeeRepository.countByStatusAndDeletedFalse("Resigned");
+        long terminated = employeeRepository.countByStatusAndDeletedFalse("Terminated");
+
+        List<DashboardSummaryDTO.DepartmentCount> departmentBreakdown = departmentRepository.findAllByDeletedFalseOrderByNameAsc().stream()
+                .map(dept -> new DashboardSummaryDTO.DepartmentCount(
+                        dept.getName(), employeeRepository.countByDepartmentIdAndDeletedFalse(dept.getId())))
+                .filter(dc -> dc.getCount() > 0)
+                .toList();
+
+        List<EmployeeSummaryDTO> recentJoiners = employeeRepository.findTop5ByDeletedFalseOrderByDateOfJoiningDesc().stream()
+                .map(EmployeeSummaryDTO::from)
+                .toList();
+
+        return new DashboardSummaryDTO(total, active, onLeave, noticePeriod, resigned, terminated,
+                departmentBreakdown, recentJoiners, upcomingBirthdays());
+    }
+
+    /**
+     * The Manager persona's team-scoped view: direct reports plus only
+     * their pending leave requests, not the whole company's.
+     *
+     * Resolves "my team" via the current login's linked Employee record
+     * (Employee.user - see User.java for why that link exists rather than
+     * assuming every login corresponds to an employee). A user with no
+     * linked Employee record (e.g. an external auditor account, or
+     * SUPER_ADMIN if it wasn't seeded with one) gets an empty team back
+     * rather than an error - "not a people manager" is a valid answer here,
+     * not a failure.
+     */
+    @GetMapping("/my-team")
+    @PreAuthorize("hasAuthority('LEAVE_APPROVE')")
+    public TeamDashboardDTO myTeam() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Employee me = employeeRepository.findByUser_UsernameAndDeletedFalse(username).orElse(null);
+        if (me == null) {
+            return new TeamDashboardDTO(List.of(), List.of());
+        }
+
+        List<Employee> directReports = employeeRepository.findAllByReportingManagerIdAndDeletedFalse(me.getId());
+        List<EmployeeSummaryDTO> teamMembers = directReports.stream().map(EmployeeSummaryDTO::from).toList();
+        List<Long> teamIds = directReports.stream().map(Employee::getId).toList();
+
+        return new TeamDashboardDTO(teamMembers, leaveRequestService.listForEmployees(teamIds, "PENDING"));
+    }
+
+    /**
+     * Active employees whose birthday (month+day, year ignored) falls within
+     * the next {@link #BIRTHDAY_LOOKAHEAD_DAYS} days, today included, sorted
+     * by how soon it comes up. Computed in Java rather than a DB date-diff
+     * query so this doesn't depend on the target database's date functions,
+     * and because it correctly handles the year-wraparound case (e.g. today
+     * is Dec 29th, someone's birthday is Jan 2nd) without special-casing it
+     * in SQL.
+     */
+    private List<DashboardSummaryDTO.UpcomingBirthday> upcomingBirthdays() {
+        LocalDate today = LocalDate.now();
+
+        return employeeRepository.findAllByDeletedFalseOrderByFirstNameAsc().stream()
+                .filter(e -> "Active".equals(e.getStatus()) && e.getDateOfBirth() != null)
+                .map(e -> new Object[]{e, daysUntilNextBirthday(e.getDateOfBirth(), today)})
+                .filter(pair -> (int) pair[1] < BIRTHDAY_LOOKAHEAD_DAYS)
+                .sorted(Comparator.comparingInt(pair -> (int) pair[1]))
+                .map(pair -> {
+                    Employee e = (Employee) pair[0];
+                    return new DashboardSummaryDTO.UpcomingBirthday(
+                            e.getId(), e.getFirstName() + " " + e.getLastName(), e.getDateOfBirth(), e.getProfilePhotoUrl());
+                })
+                .toList();
+    }
+
+    private int daysUntilNextBirthday(LocalDate dateOfBirth, LocalDate today) {
+        MonthDay birthdayMonthDay = MonthDay.from(dateOfBirth);
+        LocalDate nextOccurrence = birthdayMonthDay.atYear(today.getYear());
+        if (nextOccurrence.isBefore(today)) {
+            nextOccurrence = birthdayMonthDay.atYear(today.getYear() + 1);
+        }
+        return (int) ChronoUnit.DAYS.between(today, nextOccurrence);
+    }
+}

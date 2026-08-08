@@ -7,11 +7,57 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Avatar from '../../components/ui/Avatar';
-import { SkeletonText } from '../../components/ui/Skeleton';
-import ErrorState from '../../components/ui/ErrorState';
-import EmptyState from '../../components/ui/EmptyState';
+import Table from '../../components/ui/Table';
 import CreateEmployeeModal from './CreateEmployeeModal';
 import { statusMeta, EMPLOYMENT_TYPE_LABEL } from './statusMeta';
+
+const COLUMNS = [
+  {
+    key: 'employee',
+    label: 'Employee',
+    headerClassName: 'ps-4',
+    className: 'ps-4',
+    render: (emp) => (
+      <Link to={`/employees/${emp.id}`} className="d-flex align-items-center gap-2 text-decoration-none">
+        <Avatar name={emp.fullName} size="sm" />
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>
+            {emp.fullName}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>{emp.employeeCode}</div>
+        </div>
+      </Link>
+    ),
+  },
+  { key: 'department', label: 'Department', render: (emp) => emp.departmentName || '—' },
+  { key: 'designation', label: 'Designation', render: (emp) => emp.designationTitle || '—' },
+  { key: 'manager', label: 'Manager', render: (emp) => emp.reportingManagerName || '—' },
+  {
+    key: 'type',
+    label: 'Type',
+    render: (emp) => EMPLOYMENT_TYPE_LABEL[emp.employmentType] || emp.employmentType,
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (emp) => {
+      const meta = statusMeta(emp.status);
+      return (
+        <Badge variant={meta.variant} dot>
+          {meta.label}
+        </Badge>
+      );
+    },
+  },
+  {
+    key: 'joined',
+    label: 'Joined',
+    headerClassName: 'pe-4',
+    className: 'pe-4',
+    render: (emp) => (emp.dateOfJoining ? new Date(emp.dateOfJoining).toLocaleDateString() : '—'),
+    style: { color: 'var(--hz-text-secondary)' },
+  },
+];
 
 export default function EmployeeList() {
   const [search, setSearch] = useState('');
@@ -48,68 +94,16 @@ export default function EmployeeList() {
       </div>
 
       <Card bodyClassName="p-0">
-        {isLoading && (
-          <div className="p-4">
-            <SkeletonText lines={6} />
-          </div>
-        )}
-
-        {isError && <ErrorState description="Couldn't load employees." onRetry={refetch} />}
-
-        {!isLoading && !isError && employees?.length === 0 && (
-          <EmptyState
-            title={search ? 'No matches' : 'No employees yet'}
-            description={search ? `Nothing matches "${search}"` : 'Onboard your first employee to populate the directory.'}
-          />
-        )}
-
-        {!isLoading && !isError && employees?.length > 0 && (
-          <table className="table mb-0 align-middle">
-            <thead>
-              <tr style={{ fontSize: 'var(--hz-text-xs)', color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>
-                <th className="ps-4">Employee</th>
-                <th>Department</th>
-                <th>Designation</th>
-                <th>Manager</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th className="pe-4">Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((emp) => {
-                const meta = statusMeta(emp.status);
-                return (
-                  <tr key={emp.id}>
-                    <td className="ps-4">
-                      <Link to={`/employees/${emp.id}`} className="d-flex align-items-center gap-2 text-decoration-none">
-                        <Avatar name={emp.fullName} size="sm" />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>
-                            {emp.fullName}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>{emp.employeeCode}</div>
-                        </div>
-                      </Link>
-                    </td>
-                    <td style={{ fontSize: 'var(--hz-text-sm)' }}>{emp.departmentName || '—'}</td>
-                    <td style={{ fontSize: 'var(--hz-text-sm)' }}>{emp.designationTitle || '—'}</td>
-                    <td style={{ fontSize: 'var(--hz-text-sm)' }}>{emp.reportingManagerName || '—'}</td>
-                    <td style={{ fontSize: 'var(--hz-text-sm)' }}>{EMPLOYMENT_TYPE_LABEL[emp.employmentType] || emp.employmentType}</td>
-                    <td>
-                      <Badge variant={meta.variant} dot>
-                        {meta.label}
-                      </Badge>
-                    </td>
-                    <td className="pe-4" style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>
-                      {emp.dateOfJoining ? new Date(emp.dateOfJoining).toLocaleDateString() : '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        <Table
+          columns={COLUMNS}
+          rows={employees}
+          getRowKey={(emp) => emp.id}
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={refetch}
+          emptyTitle={search ? 'No matches' : 'No employees yet'}
+          emptyDescription={search ? `Nothing matches "${search}"` : 'Onboard your first employee to populate the directory.'}
+        />
       </Card>
 
       {showCreate && <CreateEmployeeModal onClose={() => setShowCreate(false)} />}
