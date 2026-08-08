@@ -1,0 +1,62 @@
+# HaodaOne Brand Identity
+
+Quick reference for the public-facing brand. The in-app product design system
+lives in `tokens.css`; this file documents how those same tokens extend into
+marketing surfaces (landing page, careers pages, favicon).
+
+## Logo
+
+`src/components/brand/Logo.jsx` is the single source of truth - never hardcode
+an "H1" badge again. The mark is a monogram: two pillars + a crossbar read as
+an "H" (Haoda), and the small teal node on the right pillar stands for the
+"One" - a single person represented within the platform.
+
+- `<Logo />` - full lockup (mark + wordmark), color, for light backgrounds.
+- `<Logo tone="onDark" />` - for the indigo gradient hero / login panel.
+- `<Logo variant="mark" size={32} />` - icon-only, e.g. sidebar, favicon.
+- `<Logo tagline="Careers" />` - wordmark with a small suffix label.
+
+Static exports for places that can't render React: `public/favicon.svg`,
+`public/logo-mark-white.svg`.
+
+## Color
+
+Brand colors are defined once in `tokens.css` and reused everywhere:
+
+| Role | Token | Hex |
+|---|---|---|
+| Primary (indigo) | `--hz-primary-600` | `#4f46e5` |
+| Primary deep | `--hz-primary-800` | `#3730a3` |
+| Accent (teal) | `--hz-accent-500` | `#0ea5a4` |
+| Ink | `--hz-gray-900` | `#0f172a` |
+| Canvas | `--hz-gray-50` | `#f8fafc` |
+
+The signature gradient (`--hz-primary-800` → `--hz-primary-600` →
+`--hz-accent-600`) is used sparingly, for high-impact surfaces only: the hero
+section, the login brand panel, and the logo mark itself. Everywhere else
+stays on the quiet neutral palette so the gradient keeps its impact.
+
+## Typography
+
+- **Display** (`--hz-font-display`, defined in `landing.css`): *Space
+  Grotesk* - used only for large marketing headlines (hero, section titles).
+  Chosen for a technical, structured character that fits a workforce
+  platform without tipping into a generic "startup" look.
+- **Body / UI** (`--hz-font-sans`): *Inter* - every paragraph, label, nav
+  item, and the entire authenticated product.
+
+Both are loaded via the `@import` at the top of `landing.css`. If the app
+later adds a build-time font pipeline, swap that `@import` for self-hosted
+files - nothing else needs to change.
+
+## Iconography
+
+Lucide icons only (`lucide-react`), 1.5-2px stroke, no filled icons. This
+keeps the marketing site visually identical to the authenticated product
+instead of importing a second icon set just for marketing pages.
+
+## Voice
+
+Direct, specific, no hype adjectives ("revolutionary", "game-changing").
+Describe what the product does for the person using it, the same register
+already established on the login screen's brand panel.
