@@ -90,7 +90,7 @@ export default function OfferLetterPanel({ candidate }) {
   const alreadySent = candidate.stage === 'OFFER_LETTER_SENT';
 
   return (
-    <div className="p-3" style={{ background: 'var(--hz-bg-subtle, #f7f8fa)', borderRadius: 8 }}>
+    <div className="p-3" style={{ background: 'var(--hz-gray-50)', borderRadius: 8 }}>
       <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
         <div style={{ fontSize: 11, color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>Offer Letter</div>
         {alreadySent && (

@@ -81,7 +81,7 @@ export default function JobApply() {
     return (
       <PublicLayout>
         <div className="hz-surface p-5 text-center">
-          <CheckCircle2 size={48} color="var(--hz-success-600, #16a34a)" style={{ marginBottom: 16 }} />
+          <CheckCircle2 size={48} color="var(--hz-success-600)" style={{ marginBottom: 16 }} />
           <h2 style={{ fontSize: 'var(--hz-text-xl)', fontWeight: 700, marginBottom: 8 }}>Application received!</h2>
           <p className="text-secondary-hz" style={{ maxWidth: 460, margin: '0 auto' }}>
             Thanks for applying to <strong>{job.title}</strong>. Our team will review your application and reach out if there's a match.

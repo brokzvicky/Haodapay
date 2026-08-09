@@ -1,27 +1,36 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, UserPlus, Briefcase } from 'lucide-react';
 import { candidatesApi, jobOpeningsApi } from '../../api/endpoints/recruitment';
 import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Avatar from '../../components/ui/Avatar';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
+import Dialog from '../../components/ui/Dialog';
+import FormField from '../../components/ui/FormField';
 import { SkeletonText } from '../../components/ui/Skeleton';
 import CandidateDetailModal from './CandidateDetailModal';
 import { useBreadcrumbLabel } from '../../components/layout/BreadcrumbContext';
 
-const STAGE_VARIANT = {
-  APPLIED: 'neutral', SHORTLISTED: 'info', HOLD: 'warning',
-  ROUND1: 'primary', ROUND2: 'primary', ROUND3: 'primary',
-  OFFERED: 'warning', OFFER_LETTER_SENT: 'primary', HIRED: 'success', REJECTED: 'danger',
-};
+// Main flow left to right, then the two exception/terminal columns
+// (On Hold, Rejected) pinned at the end - a candidate can land in either
+// from several different stages, so they don't fit linearly in the flow.
+const STAGE_COLUMNS = [
+  'APPLIED', 'SHORTLISTED', 'ROUND1', 'ROUND2', 'ROUND3',
+  'OFFERED', 'OFFER_LETTER_SENT', 'HIRED', 'HOLD', 'REJECTED',
+];
 const STAGE_LABEL = {
   APPLIED: 'Applied', SHORTLISTED: 'Shortlisted', HOLD: 'On Hold',
   ROUND1: 'Round 1', ROUND2: 'Round 2', ROUND3: 'Round 3',
-  OFFERED: 'Offered', OFFER_LETTER_SENT: 'Offer Letter Sent', HIRED: 'Hired', REJECTED: 'Rejected',
+  OFFERED: 'Offered', OFFER_LETTER_SENT: 'Offer Sent', HIRED: 'Hired', REJECTED: 'Rejected',
+};
+const STAGE_ACCENT = {
+  APPLIED: 'var(--hz-gray-400)', SHORTLISTED: 'var(--hz-info-500)', HOLD: 'var(--hz-warning-500)',
+  ROUND1: 'var(--hz-primary-500)', ROUND2: 'var(--hz-primary-500)', ROUND3: 'var(--hz-primary-500)',
+  OFFERED: 'var(--hz-warning-500)', OFFER_LETTER_SENT: 'var(--hz-primary-500)',
+  HIRED: 'var(--hz-success-500)', REJECTED: 'var(--hz-danger-500)',
 };
 
 export default function CandidatePipeline() {
@@ -39,6 +48,14 @@ export default function CandidatePipeline() {
     queryFn: () => candidatesApi.list(jobOpeningId),
   });
 
+  const columns = useMemo(() => {
+    const byStage = Object.fromEntries(STAGE_COLUMNS.map((s) => [s, []]));
+    (candidates || []).forEach((c) => {
+      (byStage[c.stage] || (byStage[c.stage] = [])).push(c);
+    });
+    return byStage;
+  }, [candidates]);
+
   return (
     <div className="d-flex flex-column gap-4">
       <Link to="/recruitment" className="d-inline-flex align-items-center gap-1 text-decoration-none" style={{ color: 'var(--hz-text-secondary)', fontSize: 'var(--hz-text-sm)', width: 'fit-content' }}>
@@ -50,6 +67,7 @@ export default function CandidatePipeline() {
           <h1 style={{ fontSize: 'var(--hz-text-2xl)', fontWeight: 700 }}>{opening?.title || 'Candidate Pipeline'}</h1>
           <p className="text-secondary-hz" style={{ fontSize: 'var(--hz-text-sm)' }}>
             {opening?.departmentName || 'Any department'} {opening?.designationTitle ? `· ${opening.designationTitle}` : ''}
+            {candidates ? ` · ${candidates.length} candidate${candidates.length === 1 ? '' : 's'}` : ''}
           </p>
         </div>
         <Button icon={UserPlus} onClick={() => setShowAddCandidate(true)}>
@@ -57,51 +75,66 @@ export default function CandidatePipeline() {
         </Button>
       </div>
 
-      <Card bodyClassName="p-0">
-        {isLoading && (
-          <div className="p-4">
-            <SkeletonText lines={5} />
-          </div>
-        )}
-        {isError && <ErrorState description="Couldn't load candidates." onRetry={refetch} />}
-        {!isLoading && !isError && candidates?.length === 0 && (
-          <EmptyState title="No candidates yet" description="Candidates who apply via the Careers page will appear here automatically, or add one manually." />
-        )}
-        {!isLoading && !isError && candidates?.length > 0 && (
-          <table className="table mb-0 align-middle">
-            <thead>
-              <tr style={{ fontSize: 'var(--hz-text-xs)', color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>
-                <th className="ps-4">Candidate</th>
-                <th>Source</th>
-                <th>Experience</th>
-                <th>Applied</th>
-                <th className="pe-4">Stage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {candidates.map((c) => (
-                <tr key={c.id} onClick={() => setSelectedCandidateId(c.id)} style={{ cursor: 'pointer' }}>
-                  <td className="ps-4">
-                    <div className="d-flex align-items-center gap-2">
+      {isLoading && (
+        <Card>
+          <SkeletonText lines={5} />
+        </Card>
+      )}
+      {isError && (
+        <Card>
+          <ErrorState description="Couldn't load candidates." onRetry={refetch} />
+        </Card>
+      )}
+      {!isLoading && !isError && candidates?.length === 0 && (
+        <Card>
+          <EmptyState
+            icon={Briefcase}
+            title="No candidates yet"
+            description="Candidates who apply via the Careers page will appear here automatically, or add one manually."
+          />
+        </Card>
+      )}
+
+      {!isLoading && !isError && candidates?.length > 0 && (
+        <div className="hz-kanban-board">
+          {STAGE_COLUMNS.map((stage) => (
+            <div key={stage} className="hz-kanban-col">
+              <div className="hz-kanban-col-header">
+                <span className="hz-kanban-col-dot" style={{ background: STAGE_ACCENT[stage] }} />
+                <span className="hz-kanban-col-title">{STAGE_LABEL[stage]}</span>
+                <span className="hz-kanban-col-count">{columns[stage]?.length || 0}</span>
+              </div>
+              <div className="hz-kanban-col-body">
+                {(columns[stage] || []).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedCandidateId(c.id)}
+                    className="hz-kanban-card"
+                  >
+                    <div className="d-flex align-items-center gap-2 mb-2">
                       <Avatar name={c.fullName} size="sm" />
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)' }}>{c.fullName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>{c.email}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="text-truncate" style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)' }}>
+                          {c.fullName}
+                        </div>
+                        <div className="text-truncate" style={{ fontSize: 11, color: 'var(--hz-text-muted)' }}>
+                          {c.source || 'Direct'}
+                        </div>
                       </div>
                     </div>
-                  </td>
-                  <td style={{ fontSize: 'var(--hz-text-sm)' }}>{c.source || '—'}</td>
-                  <td style={{ fontSize: 'var(--hz-text-sm)' }}>{c.experienceYears != null ? `${c.experienceYears} yrs` : '—'}</td>
-                  <td style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>{new Date(c.appliedDate).toLocaleDateString()}</td>
-                  <td className="pe-4">
-                    <Badge variant={STAGE_VARIANT[c.stage] || 'neutral'}>{STAGE_LABEL[c.stage] || c.stage}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+                    <div className="d-flex align-items-center justify-content-between" style={{ fontSize: 11, color: 'var(--hz-text-muted)' }}>
+                      <span>{c.experienceYears != null ? `${c.experienceYears} yrs exp` : 'Exp. n/a'}</span>
+                      <span>{new Date(c.appliedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  </button>
+                ))}
+                {(columns[stage] || []).length === 0 && <div className="hz-kanban-col-empty">No candidates</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showAddCandidate && <AddCandidateModal jobOpeningId={jobOpeningId} onClose={() => setShowAddCandidate(false)} />}
       {selectedCandidateId && <CandidateDetailModal candidateId={selectedCandidateId} onClose={() => setSelectedCandidateId(null)} />}
@@ -124,76 +157,48 @@ function AddCandidateModal({ jobOpeningId, onClose }) {
     onError: (err) => setError(err.response?.data?.message || 'Could not add candidate'),
   });
 
+  function set(field, value) {
+    setForm((f) => ({ ...f, [field]: value }));
+  }
+
   return (
-    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ background: 'rgba(15, 23, 42, 0.45)', zIndex: 50, padding: 16 }} onClick={onClose}>
-      <div className="hz-surface" style={{ width: 460, padding: 0 }} onClick={(e) => e.stopPropagation()}>
-        <div className="d-flex align-items-center justify-content-between p-4 pb-3" style={{ borderBottom: '1px solid var(--hz-border)' }}>
-          <h3 style={{ fontSize: 'var(--hz-text-lg)', fontWeight: 600, margin: 0 }}>Add Candidate</h3>
-          <button className="btn btn-light border-0 p-1" onClick={onClose}>
-            <X size={18} />
-          </button>
+    <Dialog open onClose={onClose} title="Add Candidate" size="md">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError(null);
+          create.mutate({
+            ...form,
+            jobOpeningId: Number(jobOpeningId),
+            experienceYears: form.experienceYears === '' ? null : Number(form.experienceYears),
+          });
+        }}
+      >
+        {error && (
+          <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+        <div className="row g-3 mb-3">
+          <FormField col={6} label="First Name" value={form.firstName} onChange={(v) => set('firstName', v)} required />
+          <FormField col={6} label="Last Name" value={form.lastName} onChange={(v) => set('lastName', v)} required />
         </div>
-        <form
-          className="p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setError(null);
-            create.mutate({
-              ...form,
-              jobOpeningId: Number(jobOpeningId),
-              experienceYears: form.experienceYears === '' ? null : Number(form.experienceYears),
-            });
-          }}
-        >
-          {error && (
-            <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
-              {error}
-            </div>
-          )}
-          <div className="row g-3 mb-3">
-            <div className="col-6">
-              <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>First Name</label>
-              <input className="form-control" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-            </div>
-            <div className="col-6">
-              <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Last Name</label>
-              <input className="form-control" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
-            </div>
-          </div>
-          <div className="mb-3">
-            <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Email</label>
-            <input type="email" className="form-control" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-          </div>
-          <div className="row g-3 mb-3">
-            <div className="col-6">
-              <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Phone</label>
-              <input className="form-control" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </div>
-            <div className="col-6">
-              <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Source</label>
-              <input className="form-control" placeholder="Referral, LinkedIn…" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
-            </div>
-          </div>
-          <div className="row g-3 mb-3">
-            <div className="col-6">
-              <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Experience (yrs)</label>
-              <input type="number" min="0" step="0.5" className="form-control" value={form.experienceYears} onChange={(e) => setForm({ ...form, experienceYears: e.target.value })} />
-            </div>
-            <div className="col-6">
-              <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Skills</label>
-              <input className="form-control" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} />
-            </div>
-          </div>
-          <div className="mb-1">
-            <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Resume URL (optional)</label>
-            <input className="form-control" value={form.resumeUrl} onChange={(e) => setForm({ ...form, resumeUrl: e.target.value })} />
-          </div>
-          <div className="d-flex justify-content-end gap-2 mt-4">
-            <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
-            <Button type="submit" loading={create.isPending}>Add Candidate</Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <FormField label="Email" type="email" value={form.email} onChange={(v) => set('email', v)} required />
+        <div className="row g-3 mb-3">
+          <FormField col={6} label="Phone" value={form.phone} onChange={(v) => set('phone', v)} />
+          <FormField col={6} label="Source" placeholder="Referral, LinkedIn…" value={form.source} onChange={(v) => set('source', v)} />
+        </div>
+        <div className="row g-3 mb-3">
+          <FormField col={6} label="Experience (yrs)" type="number" min="0" step="0.5" value={form.experienceYears} onChange={(v) => set('experienceYears', v)} />
+          <FormField col={6} label="Skills" value={form.skills} onChange={(v) => set('skills', v)} />
+        </div>
+        <FormField label="Resume URL (optional)" value={form.resumeUrl} onChange={(v) => set('resumeUrl', v)} />
+
+        <div className="d-flex justify-content-end gap-2 mt-2">
+          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={create.isPending}>Add Candidate</Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

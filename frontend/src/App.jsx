@@ -29,7 +29,6 @@ import SettingsUsers from './pages/SettingsUsers';
 import SettingsOrganization from './pages/SettingsOrganization';
 import SettingsLeave from './pages/SettingsLeave';
 import SettingsAudit from './pages/SettingsAudit';
-import ModulePlaceholder from './pages/ModulePlaceholder';
 import NotFound from './pages/NotFound';
 
 export default function App() {

@@ -126,8 +126,13 @@
   line-height: 1.15;
 }
 
-/* ---- Hero / welcome banner ---- */
-.hz-hero {
+/* ---- Dashboard greeting banner ----
+   Renamed from .hz-hero to .hz-greeting: the landing page's marketing
+   hero (pages/landing/landing.css) also defined .hz-hero as a bare
+   top-level selector, and since both stylesheets land in the same bundle,
+   whichever loaded last could silently override the other's styling.
+   Flagged in the Phase 1 audit, fixed here rather than left open. */
+.hz-greeting {
   position: relative;
   overflow: hidden;
   border-radius: var(--hz-radius-xl);
@@ -137,7 +142,7 @@
   padding: var(--hz-space-8) var(--hz-space-8);
 }
 
-.hz-hero__orb {
+.hz-greeting__orb {
   position: absolute;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
@@ -500,4 +505,81 @@
   font-size: 12px;
   color: var(--hz-danger-600);
   margin: 4px 0 0;
+}
+
+/* ---- Kanban board (Recruitment pipeline) ---- */
+.hz-kanban-board {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+.hz-kanban-col {
+  flex: 0 0 260px;
+  scroll-snap-align: start;
+  background: var(--hz-gray-50);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-lg);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 260px);
+}
+.hz-kanban-col-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--hz-border);
+  flex-shrink: 0;
+}
+.hz-kanban-col-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.hz-kanban-col-title {
+  font-size: var(--hz-text-sm);
+  font-weight: 600;
+  color: var(--hz-text-primary);
+  flex-grow: 1;
+}
+.hz-kanban-col-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hz-text-muted);
+  background: var(--hz-bg-surface);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-full);
+  padding: 1px 8px;
+}
+.hz-kanban-col-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.hz-kanban-col-empty {
+  font-size: 12px;
+  color: var(--hz-text-muted);
+  text-align: center;
+  padding: 16px 4px;
+}
+.hz-kanban-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--hz-bg-surface);
+  border: 1px solid var(--hz-border);
+  border-radius: var(--hz-radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: box-shadow var(--hz-transition-fast), transform var(--hz-transition-fast), border-color var(--hz-transition-fast);
+}
+.hz-kanban-card:hover {
+  box-shadow: var(--hz-shadow-md);
+  border-color: var(--hz-primary-300);
+  transform: translateY(-1px);
 }

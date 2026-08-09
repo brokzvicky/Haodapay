@@ -3,8 +3,8 @@ import Logo from '../../components/brand/Logo';
 
 export default function PublicLayout({ children }) {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--hz-bg, #f7f8fa)' }}>
-      <header style={{ borderBottom: '1px solid var(--hz-border)', background: 'var(--hz-surface, #fff)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--hz-bg-canvas)' }}>
+      <header style={{ borderBottom: '1px solid var(--hz-border)', background: 'var(--hz-bg-surface)' }}>
         <div className="container py-3 d-flex align-items-center justify-content-between">
           <Link to="/careers" className="text-decoration-none">
             <Logo tagline="Careers" />

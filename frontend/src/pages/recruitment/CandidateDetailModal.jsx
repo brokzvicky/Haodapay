@@ -102,12 +102,12 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
 
             {/* Screening review */}
             {(candidate.rating || candidate.remarks || candidate.rejectionReason) && (
-              <div className="p-3" style={{ background: 'var(--hz-bg-subtle, #f7f8fa)', borderRadius: 8 }}>
+              <div className="p-3" style={{ background: 'var(--hz-gray-50)', borderRadius: 8 }}>
                 <div style={{ fontSize: 11, color: 'var(--hz-text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>HR Screening Review</div>
                 {candidate.rating && (
                   <div className="d-flex gap-1 mb-1">
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <Star key={n} size={14} fill={n <= candidate.rating ? 'var(--hz-warning-500, #f59e0b)' : 'none'} color={n <= candidate.rating ? 'var(--hz-warning-500, #f59e0b)' : 'var(--hz-border)'} />
+                      <Star key={n} size={14} fill={n <= candidate.rating ? 'var(--hz-warning-500)' : 'none'} color={n <= candidate.rating ? 'var(--hz-warning-500)' : 'var(--hz-border)'} />
                     ))}
                   </div>
                 )}
@@ -145,7 +145,7 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                         {iv.rating && (
                           <div className="d-flex gap-1 justify-content-end mt-1">
                             {[1, 2, 3, 4, 5].map((n) => (
-                              <Star key={n} size={11} fill={n <= iv.rating ? 'var(--hz-warning-500, #f59e0b)' : 'none'} color={n <= iv.rating ? 'var(--hz-warning-500, #f59e0b)' : 'var(--hz-border)'} />
+                              <Star key={n} size={11} fill={n <= iv.rating ? 'var(--hz-warning-500)' : 'none'} color={n <= iv.rating ? 'var(--hz-warning-500)' : 'var(--hz-border)'} />
                             ))}
                           </div>
                         )}
@@ -163,12 +163,12 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
 
             {/* Offer summary */}
             {candidate.offerAmount != null && (
-              <div className="p-3" style={{ background: 'var(--hz-bg-subtle, #f7f8fa)', borderRadius: 8 }}>
+              <div className="p-3" style={{ background: 'var(--hz-gray-50)', borderRadius: 8 }}>
                 <div style={{ fontSize: 11, color: 'var(--hz-text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Offer</div>
                 <div style={{ fontSize: 'var(--hz-text-sm)' }}>Amount: {candidate.offerAmount.toLocaleString()}</div>
                 <div style={{ fontSize: 'var(--hz-text-sm)' }}>Joining: {candidate.expectedJoiningDate}</div>
                 {candidate.offerAcceptedAt && (
-                  <div className="d-flex align-items-center gap-1 mt-1" style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-success-600, #16a34a)' }}>
+                  <div className="d-flex align-items-center gap-1 mt-1" style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-success-600)' }}>
                     <CheckCircle2 size={14} /> Accepted - employee profile created
                   </div>
                 )}

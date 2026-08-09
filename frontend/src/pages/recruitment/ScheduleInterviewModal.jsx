@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X } from 'lucide-react';
 import { interviewsApi } from '../../api/endpoints/recruitment';
 import { employeesApi } from '../../api/endpoints/employees';
 import Button from '../../components/ui/Button';
+import Dialog from '../../components/ui/Dialog';
+import FormField from '../../components/ui/FormField';
 
 const ROUND_BY_STAGE = { ROUND1: { number: 1, label: 'Round 1 - HR Interview' }, ROUND2: { number: 2, label: 'Round 2 - Hiring Manager Interview' }, ROUND3: { number: 3, label: 'Round 3 - Final / Management Interview' } };
 
@@ -41,59 +42,34 @@ export default function ScheduleInterviewModal({ candidate, onClose }) {
   if (!round) return null;
 
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-      style={{ background: 'rgba(15, 23, 42, 0.45)', zIndex: 50, padding: 16 }}
-      onClick={onClose}
-    >
-      <div className="hz-surface" style={{ width: 440, padding: 0 }} onClick={(e) => e.stopPropagation()}>
-        <div className="d-flex align-items-center justify-content-between p-4 pb-3" style={{ borderBottom: '1px solid var(--hz-border)' }}>
-          <div>
-            <h3 style={{ fontSize: 'var(--hz-text-lg)', fontWeight: 600, margin: 0 }}>Schedule Interview</h3>
-            <div style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>{candidate.fullName} · {round.label}</div>
+    <Dialog open onClose={onClose} title="Schedule Interview" description={`${candidate.fullName} · ${round.label}`} size="md">
+      <form onSubmit={handleSubmit}>
+        {error && (
+          <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
+            {error}
           </div>
-          <button className="btn btn-light border-0 p-1" onClick={onClose}>
-            <X size={18} />
-          </button>
+        )}
+
+        <FormField label="Date & Time" type="datetime-local" required value={scheduledAt} onChange={setScheduledAt} />
+
+        <FormField as="select" label="Interviewer" value={interviewerId} onChange={setInterviewerId}>
+          <option value="">Select interviewer</option>
+          {employees.map((e) => (
+            <option key={e.id} value={e.id}>{e.fullName}</option>
+          ))}
+        </FormField>
+
+        <FormField as="select" label="Mode" value={mode} onChange={setMode}>
+          <option value="VIDEO">Video Call</option>
+          <option value="PHONE">Phone Call</option>
+          <option value="IN_PERSON">In Person</option>
+        </FormField>
+
+        <div className="d-flex justify-content-end gap-2 mt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={schedule.isPending}>Schedule</Button>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-4">
-          {error && (
-            <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
-              {error}
-            </div>
-          )}
-
-          <div className="mb-3">
-            <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Date & Time *</label>
-            <input type="datetime-local" className="form-control" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Interviewer</label>
-            <select className="form-select" value={interviewerId} onChange={(e) => setInterviewerId(e.target.value)}>
-              <option value="">Select interviewer</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>{e.fullName}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>Mode</label>
-            <select className="form-select" value={mode} onChange={(e) => setMode(e.target.value)}>
-              <option value="VIDEO">Video Call</option>
-              <option value="PHONE">Phone Call</option>
-              <option value="IN_PERSON">In Person</option>
-            </select>
-          </div>
-
-          <div className="d-flex justify-content-end gap-2 mt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit" loading={schedule.isPending}>Schedule</Button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Dialog>
   );
 }

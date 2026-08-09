@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { employeesApi } from '../../api/endpoints/employees';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -61,12 +61,23 @@ const COLUMNS = [
 
 export default function EmployeeList() {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const pageSize = 25;
 
-  const { data: employees, isLoading, isError, refetch } = useQuery({
-    queryKey: ['employees', search],
-    queryFn: () => employeesApi.list(search),
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['employees-paged', search, page],
+    queryFn: () => employeesApi.listPaged(search, page, pageSize),
   });
+
+  const employees = data?.content;
+  const totalPages = data?.totalPages ?? 0;
+  const totalElements = data?.totalElements ?? 0;
+
+  function handleSearchChange(value) {
+    setSearch(value);
+    setPage(0); // any new search starts back at page 1 - stale offsets into a different result set make no sense
+  }
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -89,7 +100,7 @@ export default function EmployeeList() {
           placeholder="Search by name, code, or email…"
           className="form-control ps-5"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
         />
       </div>
 
@@ -104,6 +115,39 @@ export default function EmployeeList() {
           emptyTitle={search ? 'No matches' : 'No employees yet'}
           emptyDescription={search ? `Nothing matches "${search}"` : 'Onboard your first employee to populate the directory.'}
         />
+
+        {!isLoading && !isError && totalElements > 0 && (
+          <div className="d-flex align-items-center justify-content-between px-4 py-3" style={{ borderTop: '1px solid var(--hz-border)' }}>
+            <span style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-muted)' }}>
+              {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalElements)} of {totalElements}
+            </span>
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="hz-icon-btn d-flex align-items-center justify-content-center border-0"
+                style={{ width: 32, height: 32 }}
+                onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                disabled={page === 0}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>
+                Page {page + 1} of {Math.max(totalPages, 1)}
+              </span>
+              <button
+                type="button"
+                className="hz-icon-btn d-flex align-items-center justify-content-center border-0"
+                style={{ width: 32, height: 32 }}
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                disabled={page >= totalPages - 1}
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {showCreate && <CreateEmployeeModal onClose={() => setShowCreate(false)} />}

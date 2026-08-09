@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { tokenStorage } from '../auth/tokenStorage';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://haodapay-xpl0.onrender.com';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 export const axiosClient = axios.create({
   baseURL: API_BASE_URL,

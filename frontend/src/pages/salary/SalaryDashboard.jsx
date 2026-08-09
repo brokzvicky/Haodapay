@@ -57,9 +57,9 @@ export default function SalaryDashboard() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="hz-hero">
-        <div className="hz-hero__orb" style={{ width: 240, height: 240, right: -70, top: -100 }} />
-        <div className="hz-hero__orb" style={{ width: 140, height: 140, right: 160, bottom: -70 }} />
+      <div className="hz-greeting">
+        <div className="hz-greeting__orb" style={{ width: 240, height: 240, right: -70, top: -100 }} />
+        <div className="hz-greeting__orb" style={{ width: 140, height: 140, right: 160, bottom: -70 }} />
         <div className="position-relative d-flex flex-wrap align-items-end justify-content-between gap-3">
           <div>
             <p style={{ fontSize: 'var(--hz-text-sm)', color: 'rgba(255,255,255,0.75)', fontWeight: 500, marginBottom: 6 }}>Salary &amp; Payroll</p>

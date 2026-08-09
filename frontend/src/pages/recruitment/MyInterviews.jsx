@@ -84,14 +84,14 @@ export default function MyInterviews() {
                     </div>
                   )}
                   {iv.instructions && (
-                    <div className="mt-2 p-2" style={{ background: 'var(--hz-bg-subtle, #f7f8fa)', borderRadius: 6, fontSize: 'var(--hz-text-sm)' }}>
+                    <div className="mt-2 p-2" style={{ background: 'var(--hz-gray-50)', borderRadius: 6, fontSize: 'var(--hz-text-sm)' }}>
                       <strong>Instructions:</strong> {iv.instructions}
                     </div>
                   )}
                   {iv.status === 'COMPLETED' && (
                     <div className="d-flex gap-1 mt-2">
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <Star key={n} size={13} fill={n <= (iv.rating || 0) ? 'var(--hz-warning-500, #f59e0b)' : 'none'} color={n <= (iv.rating || 0) ? 'var(--hz-warning-500, #f59e0b)' : 'var(--hz-border)'} />
+                        <Star key={n} size={13} fill={n <= (iv.rating || 0) ? 'var(--hz-warning-500)' : 'none'} color={n <= (iv.rating || 0) ? 'var(--hz-warning-500)' : 'var(--hz-border)'} />
                       ))}
                     </div>
                   )}

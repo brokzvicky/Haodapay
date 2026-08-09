@@ -15,9 +15,17 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const firstName = user?.fullName?.split(' ')[0];
 
+  // A plain EMPLOYEE (seeded with zero permissions - see DataSeeder) lands
+  // here right after login with none of EMPLOYEE_VIEW/LEAVE_VIEW/etc. Skip
+  // the org-wide queries entirely for that case rather than firing them
+  // and showing an error card as someone's first impression after signing
+  // in - see the lightweight branch in the return below.
+  const canViewOrgSummary = hasPermission('EMPLOYEE_VIEW');
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: dashboardApi.summary,
+    enabled: canViewOrgSummary,
   });
 
   // Approval Queue needs LEAVE_VIEW, which not every role that can see the
@@ -79,20 +87,86 @@ export default function Dashboard() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="hz-hero">
-        <div className="hz-hero__orb" style={{ width: 220, height: 220, right: -60, top: -90 }} />
-        <div className="hz-hero__orb" style={{ width: 130, height: 130, right: 140, bottom: -60 }} />
+      <div className="hz-greeting">
+        <div className="hz-greeting__orb" style={{ width: 220, height: 220, right: -60, top: -90 }} />
+        <div className="hz-greeting__orb" style={{ width: 130, height: 130, right: 140, bottom: -60 }} />
         <div className="position-relative">
           <p style={{ fontSize: 'var(--hz-text-sm)', color: 'rgba(255,255,255,0.75)', fontWeight: 500, marginBottom: 6 }}>{today}</p>
           <h1 style={{ fontSize: 'var(--hz-text-3xl)', fontWeight: 700, marginBottom: 8, letterSpacing: '-0.02em' }}>
             Good to see you, {firstName}
           </h1>
           <p style={{ fontSize: 'var(--hz-text-base)', color: 'rgba(255,255,255,0.85)', maxWidth: 480, marginBottom: 0 }}>
-            Here's what's happening across your organization today.
+            {canViewOrgSummary
+              ? "Here's what's happening across your organization today."
+              : 'Your profile, leave, and attendance - all in one place.'}
           </p>
         </div>
       </div>
 
+      {!canViewOrgSummary && (
+        <div className="row g-3">
+          <div className="col-12 col-md-4">
+            <Link to={`/employees/${user?.employeeId || ''}`} className="text-decoration-none">
+              <Card hoverable className="h-100">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="hz-stat__icon" style={{ background: 'var(--hz-primary-50)', color: 'var(--hz-primary-600)' }}>
+                    <UserCheck size={20} />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)', marginBottom: 2 }}>
+                      My Profile
+                    </p>
+                    <p className="text-secondary-hz" style={{ fontSize: 12, marginBottom: 0 }}>
+                      View your details
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          </div>
+          <div className="col-12 col-md-4">
+            <Link to="/leave" className="text-decoration-none">
+              <Card hoverable className="h-100">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="hz-stat__icon" style={{ background: 'var(--hz-warning-50)', color: 'var(--hz-warning-500)' }}>
+                    <CalendarOff size={20} />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)', marginBottom: 2 }}>
+                      Leave
+                    </p>
+                    <p className="text-secondary-hz" style={{ fontSize: 12, marginBottom: 0 }}>
+                      Apply or check your balance
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          </div>
+          <div className="col-12 col-md-4">
+            <Link to="/attendance" className="text-decoration-none">
+              <Card hoverable className="h-100">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="hz-stat__icon" style={{ background: 'var(--hz-success-50)', color: 'var(--hz-success-500)' }}>
+                    <FileClock size={20} />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-primary)', marginBottom: 2 }}>
+                      Attendance
+                    </p>
+                    <p className="text-secondary-hz" style={{ fontSize: 12, marginBottom: 0 }}>
+                      View your punch history
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {canViewOrgSummary && (
+        <>
       {isError && <ErrorState description="Couldn't load dashboard data." onRetry={refetch} />}
 
       {!isError && (
@@ -329,6 +403,8 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -44,8 +44,8 @@ export default function SalaryDetails() {
         <ArrowLeft size={14} /> Back to Employee Salary List
       </Link>
 
-      <div className="hz-hero">
-        <div className="hz-hero__orb" style={{ width: 200, height: 200, right: -60, top: -80 }} />
+      <div className="hz-greeting">
+        <div className="hz-greeting__orb" style={{ width: 200, height: 200, right: -60, top: -80 }} />
         <div className="position-relative d-flex flex-wrap align-items-center justify-content-between gap-3">
           <div className="d-flex align-items-center gap-3">
             <Avatar name={data.employeeName} src={data.profilePhotoUrl} size="xl" />
