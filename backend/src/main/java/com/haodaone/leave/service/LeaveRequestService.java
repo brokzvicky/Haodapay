@@ -58,14 +58,34 @@ public class LeaveRequestService {
     /** Same shape as listAll but scoped to a specific set of employee IDs -
      *  used for a manager's team-scoped approval queue. Empty employeeIds
      *  returns an empty list rather than falling back to "all", since an
-     *  empty team should mean nothing to approve, not everything. */
+     *  empty team should mean nothing to approve, not everything. Blank
+     *  status means every status, mirroring listAll's own behavior. */
     public List<LeaveRequestDTO> listForEmployees(List<Long> employeeIds, String status) {
         if (employeeIds == null || employeeIds.isEmpty()) {
             return List.of();
         }
-        String normalizedStatus = (status == null || status.isBlank()) ? "PENDING" : status.toUpperCase();
-        return leaveRequestRepository.findAllByEmployeeIdInAndStatusOrderByStartDateAsc(employeeIds, normalizedStatus)
-                .stream().map(LeaveRequestDTO::from).toList();
+        List<LeaveRequest> requests = (status == null || status.isBlank())
+                ? leaveRequestRepository.findAllByEmployeeIdInOrderByStartDateDesc(employeeIds)
+                : leaveRequestRepository.findAllByEmployeeIdInAndStatusOrderByStartDateAsc(employeeIds, status.toUpperCase());
+        return requests.stream().map(LeaveRequestDTO::from).toList();
+    }
+
+    /**
+     * Resolves "my team" from the given login (via the Employee.user link -
+     * see EmployeeSecurity for the same pattern) and returns that team's
+     * leave requests at the given status. Shared by DashboardController's
+     * "My Team" widget and the Approval Center's team-scoped view so
+     * "who is my team" is resolved exactly one way, not reimplemented
+     * per caller.
+     */
+    public List<LeaveRequestDTO> listForManagerTeam(String username, String status) {
+        Employee me = employeeRepository.findByUser_UsernameAndDeletedFalse(username).orElse(null);
+        if (me == null) {
+            return List.of();
+        }
+        List<Long> teamIds = employeeRepository.findAllByReportingManagerIdAndDeletedFalse(me.getId())
+                .stream().map(Employee::getId).toList();
+        return listForEmployees(teamIds, status);
     }
 
     public List<LeaveRequestDTO> listByEmployee(Long employeeId) {

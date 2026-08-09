@@ -89,9 +89,8 @@ public class DashboardController {
 
         List<Employee> directReports = employeeRepository.findAllByReportingManagerIdAndDeletedFalse(me.getId());
         List<EmployeeSummaryDTO> teamMembers = directReports.stream().map(EmployeeSummaryDTO::from).toList();
-        List<Long> teamIds = directReports.stream().map(Employee::getId).toList();
 
-        return new TeamDashboardDTO(teamMembers, leaveRequestService.listForEmployees(teamIds, "PENDING"));
+        return new TeamDashboardDTO(teamMembers, leaveRequestService.listForManagerTeam(username, "PENDING"));
     }
 
     /**

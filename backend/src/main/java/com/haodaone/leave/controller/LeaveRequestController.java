@@ -8,6 +8,7 @@ import com.haodaone.leave.service.LeaveRequestService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -27,6 +28,23 @@ public class LeaveRequestController {
     @PreAuthorize("hasAuthority('LEAVE_VIEW')")
     public List<LeaveRequestDTO> listAll(@RequestParam(required = false) String status) {
         return leaveRequestService.listAll(status);
+    }
+
+    /**
+     * Team-scoped equivalent of listAll, for the /leave page's Manager
+     * view. listAll above is gated on LEAVE_VIEW, which MANAGER also
+     * holds (alongside HR_ADMIN) - meaning a Manager hitting listAll
+     * directly gets every employee's leave requests company-wide, not
+     * just their team's. The frontend now calls this instead whenever the
+     * user has LEAVE_APPROVE without LEAVE_MANAGE (see useAuth().hasPermission
+     * usage in LeaveRequests.jsx) - same distinction already used for the
+     * Dashboard's My Team widget.
+     */
+    @GetMapping("/team")
+    @PreAuthorize("hasAuthority('LEAVE_APPROVE')")
+    public List<LeaveRequestDTO> listForMyTeam(@RequestParam(required = false) String status) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return leaveRequestService.listForManagerTeam(username, status);
     }
 
     @GetMapping("/employee/{employeeId}")
