@@ -1,18 +1,26 @@
+import orvexaIcon from '../../assets/brand/orvexa-icon.png';
+import orvexaLockup from '../../assets/brand/orvexa-lockup.png';
+
 /**
- * HaodaOne brand mark.
+ * ORVEXA brand mark.
  * -----------------------------------------------------------------
- * A single source of truth for the logo so every surface (landing page,
- * login screen, app sidebar, careers pages) renders the exact same mark
- * instead of ad-hoc "H1" badges. The mark is a monogram: two pillars and
- * a crossbar read as an "H", and the small accent node standing on the
- * right pillar stands for the "One" - a single person represented within
- * the platform.
+ * Single source of truth for the logo so every surface (landing page,
+ * login screen, sidebar, careers pages) renders the exact same asset
+ * instead of ad-hoc text/badges. Backed by the real brand artwork in
+ * src/assets/brand/ - never re-draw the mark in SVG/CSS.
  *
  * Usage:
- *   <Logo />                                  // color mark + wordmark
- *   <Logo tone="onDark" />                    // for dark/gradient backgrounds
+ *   <Logo />                                  // icon + wordmark lockup
+ *   <Logo tone="onDark" />                    // same lockup, on a white
+ *                                              // chip so it reads cleanly
+ *                                              // on the indigo gradient
  *   <Logo variant="mark" size={32} />         // icon only, e.g. sidebar
- *   <Logo tagline="Careers" />                // wordmark + small suffix
+ *   <Logo tagline="Careers" />                 // lockup + small suffix label
+ *
+ * Note: source art currently ships on a white/transparent field with no
+ * dedicated all-white "onDark" cut. Until design provides one, onDark
+ * wraps the color lockup in a soft white chip rather than losing contrast
+ * against the gradient panels.
  */
 export default function Logo({
   variant = 'full', // 'full' | 'mark'
@@ -22,66 +30,54 @@ export default function Logo({
   className = '',
   wordmarkSize,
 }) {
-  const gradientId = `hz-logo-grad-${tone}`;
   const isOnDark = tone === 'onDark';
+  const src = variant === 'mark' ? orvexaIcon : orvexaLockup;
+  // Lockup art is wider than tall (~1.6:1); icon art is square.
+  const aspect = variant === 'mark' ? 1 : 779 / 486;
+  const height = variant === 'mark' ? size : Math.round(size * 1.15);
+  const width = Math.round(height * aspect);
+
+  const mark = (
+    <img
+      src={src}
+      alt="ORVEXA"
+      width={width}
+      height={height}
+      style={{ display: 'block', width, height, objectFit: 'contain' }}
+    />
+  );
 
   return (
     <span className={`d-inline-flex align-items-center gap-2 ${className}`} style={{ lineHeight: 1 }}>
-      <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <defs>
-          <linearGradient id={gradientId} x1="2" y1="2" x2="38" y2="38" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="55%" stopColor="#4f46e5" />
-            <stop offset="100%" stopColor="#3730a3" />
-          </linearGradient>
-        </defs>
+      {isOnDark ? (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            background: 'rgba(255,255,255,0.96)',
+            borderRadius: variant === 'mark' ? '999px' : 12,
+            padding: variant === 'mark' ? 4 : '6px 12px',
+            boxShadow: '0 1px 2px rgba(15,23,42,0.12)',
+          }}
+        >
+          {mark}
+        </span>
+      ) : (
+        mark
+      )}
 
-        <rect
-          x="1"
-          y="1"
-          width="38"
-          height="38"
-          rx="11"
-          fill={isOnDark ? 'rgba(255,255,255,0.14)' : `url(#${gradientId})`}
-          stroke={isOnDark ? 'rgba(255,255,255,0.28)' : 'none'}
-          strokeWidth={isOnDark ? 1 : 0}
-        />
-
-        {/* "H" monogram - left pillar, right pillar, crossbar */}
-        <rect x="10.5" y="10" width="5" height="20" rx="2.5" fill="#ffffff" fillOpacity={isOnDark ? 0.95 : 1} />
-        <rect x="24.5" y="10" width="5" height="20" rx="2.5" fill="#ffffff" fillOpacity={isOnDark ? 0.95 : 1} />
-        <rect x="10.5" y="17.5" width="19" height="5" rx="2.5" fill="#ffffff" fillOpacity={isOnDark ? 0.95 : 1} />
-
-        {/* Accent node - "One" */}
-        <circle cx="27" cy="10.5" r="4.25" fill="#0d9488" stroke={isOnDark ? '#1e1b4b' : '#3730a3'} strokeOpacity={0.25} strokeWidth="1" />
-      </svg>
-
-      {variant === 'full' && (
-        <span className="d-inline-flex align-items-baseline gap-2">
-          <span
-            style={{
-              fontFamily: 'var(--hz-font-display, var(--hz-font-sans))',
-              fontWeight: 700,
-              fontSize: wordmarkSize || 'var(--hz-text-lg)',
-              letterSpacing: '-0.01em',
-              color: isOnDark ? '#ffffff' : 'var(--hz-text-primary)',
-            }}
-          >
-            HaodaOne
-          </span>
-          {tagline && (
-            <span
-              style={{
-                fontSize: 'var(--hz-text-sm)',
-                fontWeight: 500,
-                color: isOnDark ? 'rgba(255,255,255,0.7)' : 'var(--hz-text-muted)',
-                paddingLeft: 8,
-                borderLeft: `1px solid ${isOnDark ? 'rgba(255,255,255,0.25)' : 'var(--hz-border)'}`,
-              }}
-            >
-              {tagline}
-            </span>
-          )}
+      {tagline && (
+        <span
+          style={{
+            fontFamily: 'var(--hz-font-display, var(--hz-font-sans))',
+            fontSize: wordmarkSize || 'var(--hz-text-sm)',
+            fontWeight: 500,
+            color: isOnDark ? 'rgba(255,255,255,0.85)' : 'var(--hz-text-muted)',
+            paddingLeft: 10,
+            borderLeft: `1px solid ${isOnDark ? 'rgba(255,255,255,0.35)' : 'var(--hz-border)'}`,
+          }}
+        >
+          {tagline}
         </span>
       )}
     </span>
