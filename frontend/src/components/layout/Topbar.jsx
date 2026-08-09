@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Bell, ChevronDown, LogOut, UserCircle, KeyRound, Clock3 } from 'lucide-react';
+import { Search, Bell, ChevronDown, LogOut, UserCircle, KeyRound, Clock3, Menu } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { employeesApi } from '../../api/endpoints/employees';
 import Avatar from '../ui/Avatar';
 import { NAV_INDEX } from './navConfig';
 import { useNavMemory } from './NavMemoryContext';
 
-export default function Topbar() {
+export default function Topbar({ onOpenMobileNav }) {
   const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -106,7 +106,7 @@ export default function Topbar() {
 
   return (
     <header
-      className="d-flex align-items-center justify-content-between px-4"
+      className="d-flex align-items-center gap-2 px-3 px-md-4"
       style={{
         height: 'var(--hz-topbar-height)',
         background: 'var(--hz-bg-surface)',
@@ -116,7 +116,17 @@ export default function Topbar() {
         zIndex: 10,
       }}
     >
-      <div className="position-relative" style={{ width: 360, maxWidth: '40vw' }} ref={searchBoxRef}>
+      <button
+        type="button"
+        onClick={onOpenMobileNav}
+        className="hz-icon-btn d-lg-none d-flex align-items-center justify-content-center border-0 flex-shrink-0"
+        style={{ width: 38, height: 38 }}
+        aria-label="Open menu"
+      >
+        <Menu size={20} />
+      </button>
+
+      <div className="position-relative hz-topbar-search" ref={searchBoxRef}>
         <div className="position-relative w-100">
           <Search size={16} className="position-absolute" style={{ left: 12, top: 10, color: 'var(--hz-text-muted)' }} />
           <input
@@ -200,7 +210,7 @@ export default function Topbar() {
         )}
       </div>
 
-      <div className="d-flex align-items-center gap-2">
+      <div className="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
         <button
           className="hz-icon-btn position-relative d-flex align-items-center justify-content-center"
           style={{ width: 38, height: 38 }}

@@ -2,6 +2,7 @@ import { axiosClient } from '../axiosClient';
 
 export const leaveRequestsApi = {
   list: (status) => axiosClient.get('/api/leave-requests', { params: status ? { status } : {} }).then((res) => res.data),
+  teamList: (status) => axiosClient.get('/api/leave-requests/team', { params: status ? { status } : {} }).then((res) => res.data),
   byEmployee: (employeeId) => axiosClient.get(`/api/leave-requests/employee/${employeeId}`).then((res) => res.data),
   balance: (employeeId, year) =>
     axiosClient.get(`/api/leave-requests/employee/${employeeId}/balance`, { params: year ? { year } : {} }).then((res) => res.data),

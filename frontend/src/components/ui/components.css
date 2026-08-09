@@ -384,6 +384,48 @@
   color: #fde68a;
 }
 
+/* ---- Sidebar: desktop default + mobile overlay drawer ---- */
+.hz-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.hz-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 1030;
+  animation: hz-backdrop-in 140ms ease;
+}
+
+@media (max-width: 991.98px) {
+  .hz-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1040;
+    width: var(--hz-sidebar-width) !important;
+    transform: translateX(-100%);
+    transition: transform var(--hz-transition-base) var(--hz-ease-spring);
+    box-shadow: var(--hz-shadow-xl);
+  }
+  .hz-sidebar--mobile-open {
+    transform: translateX(0);
+  }
+}
+
+/* ---- Topbar search: fills available space, capped wide on desktop ---- */
+.hz-topbar-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 360px;
+}
+@media (max-width: 767.98px) {
+  .hz-topbar-search {
+    max-width: none;
+  }
+}
+
 /* ============================================================
    Phase 4 - Dialog / Drawer / Table / FormField primitives
    ============================================================ */

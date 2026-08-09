@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight, ChevronDown, Star } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, ChevronDown, Star, X } from 'lucide-react';
 import Logo from '../brand/Logo';
 import { NAV_SECTIONS, NAV_INDEX, findNavItemByPath, visibleNavSections } from './navConfig';
 import { useNavMemory } from './NavMemoryContext';
 import { useAuth } from '../../hooks/useAuth';
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onCloseMobile }) {
   const location = useLocation();
   const { hasPermission } = useAuth();
   const { favoritePaths, toggleFavorite, isFavorite, recordVisit } = useNavMemory();
@@ -36,86 +36,118 @@ export default function Sidebar({ collapsed, onToggle }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  // Mobile drawer: Escape to close, and lock page scroll behind it while
+  // open - same behavior as Dialog/Drawer, kept consistent rather than
+  // reinventing a third variant of "close on Escape."
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') onCloseMobile?.();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen, onCloseMobile]);
+
   const toggleSection = (id) => setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <aside
-      className="d-flex flex-column"
-      style={{
-        width: collapsed ? 'var(--hz-sidebar-width-collapsed)' : 'var(--hz-sidebar-width)',
-        background: 'var(--hz-bg-sidebar)',
-        borderRight: '1px solid var(--hz-border)',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        transition: 'width var(--hz-transition-base)',
-        flexShrink: 0,
-      }}
-    >
-      <div
-        className="d-flex align-items-center gap-2 px-3"
-        style={{ height: 'var(--hz-topbar-height)', borderBottom: '1px solid var(--hz-border)' }}
+    <>
+      {mobileOpen && (
+        <div
+          className="hz-sidebar-backdrop d-lg-none"
+          onClick={onCloseMobile}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`d-flex flex-column hz-sidebar ${mobileOpen ? 'hz-sidebar--mobile-open' : ''}`}
+        style={{
+          width: collapsed ? 'var(--hz-sidebar-width-collapsed)' : 'var(--hz-sidebar-width)',
+          background: 'var(--hz-bg-sidebar)',
+          borderRight: '1px solid var(--hz-border)',
+          transition: 'width var(--hz-transition-base)',
+          flexShrink: 0,
+        }}
       >
-        <Logo variant={collapsed ? 'mark' : 'full'} size={32} />
-      </div>
+        <div
+          className="d-flex align-items-center justify-content-between gap-2 px-3"
+          style={{ height: 'var(--hz-topbar-height)', borderBottom: '1px solid var(--hz-border)' }}
+        >
+          <Logo variant={collapsed ? 'mark' : 'full'} size={32} />
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="hz-icon-btn d-lg-none d-flex align-items-center justify-content-center border-0"
+            style={{ width: 32, height: 32 }}
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-      <nav className="flex-grow-1 overflow-auto py-3" style={{ minHeight: 0 }}>
-        {favorites.length > 0 && (
-          <NavSection
-            label="Favorites"
-            items={favorites}
-            collapsed={collapsed}
-            isOpen
-            onToggleOpen={null}
-            isFavorite={isFavorite}
-            onToggleFavorite={toggleFavorite}
-          />
-        )}
-
-        {sections.map((section) => {
-          if (!section.label) {
-            return (
-              <div key={section.id} className="mb-3">
-                {section.items.map((item) => (
-                  <NavItem
-                    key={item.to}
-                    item={item}
-                    collapsed={collapsed}
-                    isFavorite={isFavorite(item.to)}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                ))}
-              </div>
-            );
-          }
-
-          const isOpen = section.collapsible ? Boolean(openSections[section.id]) : true;
-
-          return (
+        <nav className="flex-grow-1 overflow-auto py-3" style={{ minHeight: 0 }}>
+          {favorites.length > 0 && (
             <NavSection
-              key={section.id}
-              sectionId={section.id}
-              label={section.label}
-              items={section.items}
+              label="Favorites"
+              items={favorites}
               collapsed={collapsed}
-              isOpen={isOpen}
-              collapsible={section.collapsible}
-              onToggleOpen={section.collapsible ? () => toggleSection(section.id) : null}
+              isOpen
+              onToggleOpen={null}
               isFavorite={isFavorite}
               onToggleFavorite={toggleFavorite}
             />
-          );
-        })}
-      </nav>
+          )}
 
-      <button
-        onClick={onToggle}
-        className="hz-sidebar-toggle d-flex align-items-center justify-content-center border-0 m-2"
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-      </button>
-    </aside>
+          {sections.map((section) => {
+            if (!section.label) {
+              return (
+                <div key={section.id} className="mb-3">
+                  {section.items.map((item) => (
+                    <NavItem
+                      key={item.to}
+                      item={item}
+                      collapsed={collapsed}
+                      isFavorite={isFavorite(item.to)}
+                      onToggleFavorite={toggleFavorite}
+                    />
+                  ))}
+                </div>
+              );
+            }
+
+            const isOpen = section.collapsible ? Boolean(openSections[section.id]) : true;
+
+            return (
+              <NavSection
+                key={section.id}
+                sectionId={section.id}
+                label={section.label}
+                items={section.items}
+                collapsed={collapsed}
+                isOpen={isOpen}
+                collapsible={section.collapsible}
+                onToggleOpen={section.collapsible ? () => toggleSection(section.id) : null}
+                isFavorite={isFavorite}
+                onToggleFavorite={toggleFavorite}
+              />
+            );
+          })}
+        </nav>
+
+        <button
+          onClick={onToggle}
+          className="hz-sidebar-toggle d-none d-lg-flex align-items-center justify-content-center border-0 m-2"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+        </button>
+      </aside>
+    </>
   );
 }
 

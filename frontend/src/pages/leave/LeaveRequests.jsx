@@ -12,6 +12,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import { SkeletonText } from '../../components/ui/Skeleton';
 import ApplyLeaveModal from './ApplyLeaveModal';
 import { leaveStatusMeta } from './leaveStatusMeta';
+import { useAuth } from '../../hooks/useAuth';
 
 const TABS = [
   { key: 'PENDING', label: 'Pending Approval' },
@@ -22,10 +23,20 @@ export default function LeaveRequests() {
   const [tab, setTab] = useState('PENDING');
   const [showApply, setShowApply] = useState(false);
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+
+  // A Manager (LEAVE_APPROVE without the broader LEAVE_MANAGE HR/Admin
+  // hold) should only see their own team's requests here - the plain
+  // listAll endpoint is org-wide and gated on LEAVE_VIEW, which MANAGER
+  // also has, so calling it directly would show every employee's leave
+  // company-wide. Same distinction already used for the Dashboard's My
+  // Team widget, applied here since this page is the one people actually
+  // use day-to-day.
+  const isTeamScoped = hasPermission('LEAVE_APPROVE') && !hasPermission('LEAVE_MANAGE');
 
   const { data: requests, isLoading, isError, refetch } = useQuery({
-    queryKey: ['leave-requests', tab],
-    queryFn: () => leaveRequestsApi.list(tab || undefined),
+    queryKey: ['leave-requests', tab, isTeamScoped],
+    queryFn: () => (isTeamScoped ? leaveRequestsApi.teamList(tab || undefined) : leaveRequestsApi.list(tab || undefined)),
   });
 
   const decide = useMutation({
@@ -33,6 +44,7 @@ export default function LeaveRequests() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-my-team'] });
     },
   });
 
@@ -42,7 +54,7 @@ export default function LeaveRequests() {
         <div>
           <h1 style={{ fontSize: 'var(--hz-text-2xl)', fontWeight: 700 }}>Leave</h1>
           <p className="text-secondary-hz" style={{ fontSize: 'var(--hz-text-sm)' }}>
-            Requests, approvals, and balances
+            {isTeamScoped ? "Your team's requests, approvals, and balances" : 'Requests, approvals, and balances'}
           </p>
         </div>
         <Button icon={CalendarPlus} onClick={() => setShowApply(true)}>
@@ -82,7 +94,13 @@ export default function LeaveRequests() {
           <EmptyState
             icon={Calendar}
             title={tab === 'PENDING' ? 'Nothing pending' : 'No leave requests yet'}
-            description={tab === 'PENDING' ? 'New requests will show up here for approval.' : 'Apply for leave to get started.'}
+            description={
+              tab === 'PENDING'
+                ? isTeamScoped
+                  ? 'None of your direct reports have pending requests.'
+                  : 'New requests will show up here for approval.'
+                : 'Apply for leave to get started.'
+            }
           />
         )}
 
