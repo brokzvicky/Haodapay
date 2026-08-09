@@ -5,6 +5,7 @@ import com.haodaone.auth.dto.LoginRequest;
 import com.haodaone.auth.dto.LoginResponse;
 import com.haodaone.auth.dto.RefreshRequest;
 import com.haodaone.auth.service.AuthService;
+import com.haodaone.employee.repository.EmployeeRepository;
 import com.haodaone.security.CustomUserPrincipal;
 import com.haodaone.user.dto.UserDTO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,9 +21,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final EmployeeRepository employeeRepository;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, EmployeeRepository employeeRepository) {
         this.authService = authService;
+        this.employeeRepository = employeeRepository;
     }
 
     @PostMapping("/login")
@@ -43,7 +46,10 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserDTO> me(@AuthenticationPrincipal CustomUserPrincipal principal) {
-        return ResponseEntity.ok(UserDTO.from(principal.getUser()));
+        UserDTO dto = UserDTO.from(principal.getUser());
+        employeeRepository.findByUser_UsernameAndDeletedFalse(principal.getUsername())
+                .ifPresent(employee -> dto.setEmployeeId(employee.getId()));
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/change-password")

@@ -1,5 +1,6 @@
 package com.haodaone.employee.controller;
 
+import com.haodaone.common.dto.PageResponse;
 import com.haodaone.employee.dto.CreateEmployeeRequest;
 import com.haodaone.employee.dto.EmployeeDetailDTO;
 import com.haodaone.employee.dto.EmployeeSummaryDTO;
@@ -22,14 +23,30 @@ public class EmployeeController {
         this.employeeService = employeeService;
     }
 
+    /**
+     * Unpaginated - kept exactly as it was. Several screens (reporting
+     * manager pickers, interviewer pickers, the global search) call this
+     * expecting a plain array and would break if the response shape
+     * changed here. The Employee Directory page uses /paged below instead
+     * of changing this one out from under its other callers.
+     */
     @GetMapping
     @PreAuthorize("hasAuthority('EMPLOYEE_VIEW')")
     public List<EmployeeSummaryDTO> listAll(@RequestParam(required = false) String search) {
         return employeeService.listAll(search);
     }
 
-    @GetMapping("/{id}")
+    /** Paged directory listing - page is 0-indexed, size defaults to 25 and is capped at 100 (see EmployeeService#listPaged). */
+    @GetMapping("/paged")
     @PreAuthorize("hasAuthority('EMPLOYEE_VIEW')")
+    public PageResponse<EmployeeSummaryDTO> listPaged(@RequestParam(required = false) String search,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "25") int size) {
+        return employeeService.listPaged(search, page, size);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('EMPLOYEE_VIEW') or @employeeSecurity.isSelf(#id)")
     public EmployeeDetailDTO getById(@PathVariable Long id) {
         return employeeService.getById(id);
     }

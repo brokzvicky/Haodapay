@@ -1,6 +1,7 @@
 package com.haodaone.employee.service;
 
 import com.haodaone.audit.service.AuditLogService;
+import com.haodaone.common.dto.PageResponse;
 import com.haodaone.common.exception.BadRequestException;
 import com.haodaone.common.exception.ResourceNotFoundException;
 import com.haodaone.employee.dto.CreateEmployeeRequest;
@@ -16,6 +17,8 @@ import com.haodaone.org.repository.DesignationRepository;
 import com.haodaone.org.repository.TeamRepository;
 import com.haodaone.user.entity.User;
 import com.haodaone.user.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +56,25 @@ public class EmployeeService {
                 ? employeeRepository.findAllByDeletedFalseOrderByFirstNameAsc()
                 : employeeRepository.search(search.trim());
         return employees.stream().map(EmployeeSummaryDTO::from).toList();
+    }
+
+    /**
+     * Paged directory listing - what EmployeeController#listAll actually
+     * calls now. listAll(String) above is kept as-is since other callers
+     * (dropdowns for "reporting manager" pickers etc.) want the full,
+     * unpaginated list and would need rework to handle paging themselves;
+     * this is purely additive.
+     */
+    public PageResponse<EmployeeSummaryDTO> listPaged(String search, int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safePage = Math.max(page, 0);
+        var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "firstName"));
+
+        var result = (search == null || search.isBlank())
+                ? employeeRepository.findAllByDeletedFalse(pageable)
+                : employeeRepository.searchPaged(search.trim(), pageable);
+
+        return PageResponse.from(result, EmployeeSummaryDTO::from);
     }
 
     public EmployeeDetailDTO getById(Long id) {

@@ -30,20 +30,28 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAuthority('LEAVE_VIEW') or hasAuthority('LEAVE_APPLY')")
+    @PreAuthorize("hasAuthority('LEAVE_VIEW') or hasAuthority('LEAVE_APPLY') or @employeeSecurity.isSelf(#employeeId)")
     public List<LeaveRequestDTO> byEmployee(@PathVariable Long employeeId) {
         return leaveRequestService.listByEmployee(employeeId);
     }
 
     @GetMapping("/employee/{employeeId}/balance")
-    @PreAuthorize("hasAuthority('LEAVE_VIEW') or hasAuthority('LEAVE_APPLY')")
+    @PreAuthorize("hasAuthority('LEAVE_VIEW') or hasAuthority('LEAVE_APPLY') or @employeeSecurity.isSelf(#employeeId)")
     public List<LeaveBalanceDTO> balance(@PathVariable Long employeeId,
                                           @RequestParam(required = false) Integer year) {
         return leaveRequestService.getBalances(employeeId, year != null ? year : LocalDate.now().getYear());
     }
 
+    /**
+     * LEAVE_APPLY ("apply on behalf of employees" - see DataSeeder) covers
+     * HR/Managers filing for someone else. An employee filing for
+     * themselves doesn't need that broader permission at all - the
+     * isSelf bypass against the request body's own employeeId covers it,
+     * and since the check runs before the method body executes, nothing
+     * downstream can be reached with an unauthorized employeeId.
+     */
     @PostMapping
-    @PreAuthorize("hasAuthority('LEAVE_APPLY')")
+    @PreAuthorize("hasAuthority('LEAVE_APPLY') or @employeeSecurity.isSelf(#request.employeeId)")
     public ResponseEntity<LeaveRequestDTO> apply(@Valid @RequestBody ApplyLeaveRequest request) {
         return ResponseEntity.status(201).body(leaveRequestService.apply(request));
     }
@@ -61,7 +69,7 @@ public class LeaveRequestController {
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('LEAVE_APPLY') or hasAuthority('LEAVE_APPROVE')")
+    @PreAuthorize("hasAuthority('LEAVE_APPLY') or hasAuthority('LEAVE_APPROVE') or @employeeSecurity.ownsLeaveRequest(#id)")
     public LeaveRequestDTO cancel(@PathVariable Long id) {
         return leaveRequestService.cancel(id);
     }

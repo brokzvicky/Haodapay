@@ -17,6 +17,7 @@ public class UserDTO {
     private LocalDateTime lastLoginAt;
     private List<String> roles;
     private Set<String> permissions;
+    private Long employeeId;
 
     public static UserDTO from(User user) {
         UserDTO dto = new UserDTO();
@@ -74,5 +75,14 @@ public class UserDTO {
 
     public Set<String> getPermissions() {
         return permissions;
+    }
+
+    /** Null for logins with no linked Employee record (see Employee.user javadoc) - not every account is an employee. */
+    public Long getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(Long employeeId) {
+        this.employeeId = employeeId;
     }
 }

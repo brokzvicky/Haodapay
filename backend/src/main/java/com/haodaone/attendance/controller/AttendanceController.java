@@ -36,7 +36,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAuthority('ATTENDANCE_VIEW')")
+    @PreAuthorize("hasAuthority('ATTENDANCE_VIEW') or @employeeSecurity.isSelf(#employeeId)")
     public List<AttendanceRecordDTO> byEmployee(@PathVariable Long employeeId) {
         return attendanceRecordRepository.findAllByEmployeeIdOrderByPunchTimeDesc(employeeId).stream()
                 .map(AttendanceRecordDTO::from)

@@ -9,6 +9,7 @@ import com.haodaone.auth.entity.RefreshToken;
 import com.haodaone.auth.repository.RefreshTokenRepository;
 import com.haodaone.common.exception.AuthenticationFailedException;
 import com.haodaone.common.exception.BadRequestException;
+import com.haodaone.employee.repository.EmployeeRepository;
 import com.haodaone.security.JwtService;
 import com.haodaone.user.dto.UserDTO;
 import com.haodaone.user.entity.User;
@@ -40,6 +41,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuditLogService auditLogService;
+    private final EmployeeRepository employeeRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.jwt.refresh-token-expiry-days:7}")
@@ -50,13 +52,23 @@ public class AuthService {
                         LoginHistoryRepository loginHistoryRepository,
                         PasswordEncoder passwordEncoder,
                         JwtService jwtService,
-                        AuditLogService auditLogService) {
+                        AuditLogService auditLogService,
+                        EmployeeRepository employeeRepository) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.loginHistoryRepository = loginHistoryRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.auditLogService = auditLogService;
+        this.employeeRepository = employeeRepository;
+    }
+
+    /** Every UserDTO handed back to the frontend needs this resolved the same way - see UserDTO#getEmployeeId. */
+    private UserDTO toUserDTO(User user) {
+        UserDTO dto = UserDTO.from(user);
+        employeeRepository.findByUser_UsernameAndDeletedFalse(user.getUsername())
+                .ifPresent(employee -> dto.setEmployeeId(employee.getId()));
+        return dto;
     }
 
     @Transactional
@@ -98,7 +110,7 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(user.getUsername(), roleNames);
         String refreshToken = issueRefreshToken(user, httpRequest);
 
-        return new LoginResponse(accessToken, refreshToken, UserDTO.from(user));
+        return new LoginResponse(accessToken, refreshToken, toUserDTO(user));
     }
 
     @Transactional
@@ -126,7 +138,7 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(user.getUsername(), roleNames);
         String newRefreshToken = issueRefreshToken(user, httpRequest);
 
-        return new LoginResponse(accessToken, newRefreshToken, UserDTO.from(user));
+        return new LoginResponse(accessToken, newRefreshToken, toUserDTO(user));
     }
 
     @Transactional
