@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, FileSpreadsheet, History, Receipt } from 'lucide-react';
 import { employeeSalaryApi } from '../../api/endpoints/salary';
+import { useAuth } from '../../hooks/useAuth';
 import Card from '../../components/ui/Card';
 import Avatar from '../../components/ui/Avatar';
 import EmptyState from '../../components/ui/EmptyState';
@@ -13,16 +14,43 @@ import PayrollStatusBadge from './components/PayrollStatusBadge';
 import AssignSalaryStructureModal from './components/AssignSalaryStructureModal';
 import { useBreadcrumbLabel } from '../../components/layout/BreadcrumbContext';
 
+/**
+ * Serves two routes with one component:
+ *  - /salary/employees/:employeeId - HR/Admin looking up any employee (SALARY_VIEW)
+ *  - /my-payslip - an employee viewing their own (no employeeId in the URL,
+ *    resolved from the logged-in user instead - see EmployeeSalaryController#
+ *    getDetail's isSelf bypass on the backend for the matching permission check)
+ * Management actions (Revise/Define Structure) and the HR-only back link
+ * are hidden unless the viewer actually has SALARY_MANAGE/SALARY_VIEW -
+ * without that, a self-viewing employee would see a button that 403s.
+ */
 export default function SalaryDetails() {
-  const { employeeId } = useParams();
+  const { employeeId: routeEmployeeId } = useParams();
+  const { user, hasPermission } = useAuth();
+  const employeeId = routeEmployeeId || user?.employeeId;
+  const canManage = hasPermission('SALARY_MANAGE');
+  const canViewList = hasPermission('SALARY_VIEW');
   const [modalOpen, setModalOpen] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['salary-employee-detail', employeeId],
     queryFn: () => employeeSalaryApi.getDetail(employeeId),
+    enabled: !!employeeId,
   });
 
   useBreadcrumbLabel(data?.employeeName);
+
+  if (!employeeId) {
+    return (
+      <Card>
+        <EmptyState
+          icon={Receipt}
+          title="No linked employee record"
+          description="This login isn't linked to an employee profile, so there's no payslip to show."
+        />
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -40,9 +68,15 @@ export default function SalaryDetails() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <Link to="/salary/employees" className="d-inline-flex align-items-center gap-1 text-decoration-none" style={{ fontSize: 13, color: 'var(--hz-text-secondary)', width: 'fit-content' }}>
-        <ArrowLeft size={14} /> Back to Employee Salary List
-      </Link>
+      {canViewList ? (
+        <Link to="/salary/employees" className="d-inline-flex align-items-center gap-1 text-decoration-none" style={{ fontSize: 13, color: 'var(--hz-text-secondary)', width: 'fit-content' }}>
+          <ArrowLeft size={14} /> Back to Employee Salary List
+        </Link>
+      ) : (
+        <Link to="/dashboard" className="d-inline-flex align-items-center gap-1 text-decoration-none" style={{ fontSize: 13, color: 'var(--hz-text-secondary)', width: 'fit-content' }}>
+          <ArrowLeft size={14} /> Back to Dashboard
+        </Link>
+      )}
 
       <div className="hz-greeting">
         <div className="hz-greeting__orb" style={{ width: 200, height: 200, right: -60, top: -80 }} />
@@ -56,9 +90,11 @@ export default function SalaryDetails() {
               </p>
             </div>
           </div>
-          <button className="btn btn-light" onClick={() => setModalOpen(true)}>
-            {structure ? 'Revise Structure' : 'Define Structure'}
-          </button>
+          {canManage && (
+            <button className="btn btn-light" onClick={() => setModalOpen(true)}>
+              {structure ? 'Revise Structure' : 'Define Structure'}
+            </button>
+          )}
         </div>
       </div>
 

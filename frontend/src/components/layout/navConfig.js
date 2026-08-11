@@ -15,6 +15,9 @@ import {
   FileSpreadsheet,
   PlayCircle,
   Radio,
+  Presentation,
+  UserCheck,
+  Receipt,
 } from 'lucide-react';
 
 /**
@@ -39,17 +42,19 @@ export const NAV_SECTIONS = [
     items: [
       { to: '/employees', icon: Users, label: 'Employees' },
       { to: '/attendance', icon: Clock, label: 'Attendance' },
-      { to: '/attendance/devices', icon: Radio, label: 'Devices' },
+      { to: '/attendance/devices', icon: Radio, label: 'Devices', permission: 'DEVICE_MANAGE' },
       { to: '/leave', icon: CalendarDays, label: 'Leave' },
+      { to: '/my-payslip', icon: Receipt, label: 'My Payslip' },
     ],
   },
   {
     id: 'talent',
     label: 'Talent',
     items: [
-      { to: '/recruitment', icon: Briefcase, label: 'Recruitment' },
+      { to: '/recruitment', icon: Briefcase, label: 'Recruitment', permission: 'RECRUITMENT_VIEW' },
+      { to: '/my-recruitment', icon: UserCheck, label: 'My Recruiting', permission: 'RECRUITMENT_MANAGE' },
       { to: '/my-interviews', icon: CalendarClock, label: 'My Interviews' },
-      { to: '/performance', icon: TrendingUp, label: 'Performance' },
+      { to: '/performance', icon: TrendingUp, label: 'Performance', permission: 'PERFORMANCE_VIEW' },
     ],
   },
   {
@@ -72,7 +77,10 @@ export const NAV_SECTIONS = [
   {
     id: 'insights',
     label: 'Insights',
-    items: [{ to: '/reports', icon: FileBarChart, label: 'Reports' }],
+    items: [
+      { to: '/executive', icon: Presentation, label: 'Executive Overview', permission: 'REPORTS_VIEW' },
+      { to: '/reports', icon: FileBarChart, label: 'Reports', permission: 'REPORTS_VIEW' },
+    ],
   },
   {
     id: 'administration',

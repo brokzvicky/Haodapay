@@ -5,6 +5,7 @@ export const attendanceApi = {
   byDate: (date) => axiosClient.get('/api/attendance', { params: date ? { date } : {} }).then((res) => res.data),
   byEmployee: (employeeId) => axiosClient.get(`/api/attendance/employee/${employeeId}`).then((res) => res.data),
   unmapped: () => axiosClient.get('/api/attendance/unmapped').then((res) => res.data),
+  exceptions: (date) => axiosClient.get('/api/attendance/exceptions', { params: date ? { date } : {} }).then((res) => res.data),
   // EventSource can't set an Authorization header, so the access token
   // rides along as a query param for this one connection - see the
   // matching comment in JwtAuthenticationFilter on the backend.

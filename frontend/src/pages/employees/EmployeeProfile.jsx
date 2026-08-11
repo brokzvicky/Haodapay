@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, Users, ChevronDown, Fingerprint, Pencil, Check, X, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, Users, ChevronDown, Fingerprint, Pencil, Check, X, CalendarDays, Clock } from 'lucide-react';
 import { employeesApi } from '../../api/endpoints/employees';
 import { leaveRequestsApi } from '../../api/endpoints/leave';
+import { attendanceApi } from '../../api/endpoints/attendance';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
@@ -18,14 +19,23 @@ import { useBreadcrumbLabel } from '../../components/layout/BreadcrumbContext';
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'hierarchy', label: 'Reporting Hierarchy' },
+  { key: 'attendance', label: 'Attendance' },
   { key: 'leave', label: 'Leave' },
 ];
 
 export default function EmployeeProfile() {
   const { id } = useParams();
-  const [tab, setTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabKeys = TABS.map((t) => t.key);
+  const initialTab = validTabKeys.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
+  const [tab, setTab] = useState(initialTab);
   const queryClient = useQueryClient();
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+
+  function changeTab(key) {
+    setTab(key);
+    setSearchParams(key === 'overview' ? {} : { tab: key }, { replace: true });
+  }
 
   const { data: employee, isLoading, isError, refetch } = useQuery({
     queryKey: ['employee', id],
@@ -119,7 +129,7 @@ export default function EmployeeProfile() {
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => changeTab(t.key)}
             className="btn border-0 rounded-0 px-3 py-2"
             style={{
               fontSize: 'var(--hz-text-sm)',
@@ -136,6 +146,7 @@ export default function EmployeeProfile() {
 
       {tab === 'overview' && <OverviewTab employee={employee} />}
       {tab === 'hierarchy' && <HierarchyTab employee={employee} />}
+      {tab === 'attendance' && <AttendanceTab employee={employee} />}
       {tab === 'leave' && <LeaveTab employee={employee} />}
     </div>
   );
@@ -261,6 +272,53 @@ function HierarchyTab({ employee }) {
         </Card>
       </div>
     </div>
+  );
+}
+
+function AttendanceTab({ employee }) {
+  const { data: records, isLoading, isError, refetch } = useQuery({
+    queryKey: ['attendance-employee', String(employee.id)],
+    queryFn: () => attendanceApi.byEmployee(employee.id),
+  });
+
+  return (
+    <Card title="Punch History" bodyClassName="p-0">
+      {isLoading && (
+        <div className="p-4">
+          <SkeletonText lines={5} />
+        </div>
+      )}
+      {isError && <ErrorState description="Couldn't load attendance records." onRetry={refetch} />}
+      {!isLoading && !isError && records?.length === 0 && (
+        <EmptyState icon={Clock} title="No punches recorded" description="Attendance records from biometric devices will show up here." />
+      )}
+      {!isLoading && !isError && records?.length > 0 && (
+        <table className="table mb-0 align-middle">
+          <thead>
+            <tr style={{ fontSize: 'var(--hz-text-xs)', color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>
+              <th className="ps-4">Date</th>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Verify Mode</th>
+              <th className="pe-4">Device</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((r) => (
+              <tr key={r.id}>
+                <td className="ps-4" style={{ fontSize: 'var(--hz-text-sm)' }}>{new Date(r.punchTime).toLocaleDateString()}</td>
+                <td style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>{new Date(r.punchTime).toLocaleTimeString()}</td>
+                <td>
+                  <Badge variant={r.punchType === 'IN' ? 'success' : r.punchType === 'OUT' ? 'danger' : 'neutral'}>{r.punchType}</Badge>
+                </td>
+                <td style={{ fontSize: 'var(--hz-text-sm)' }}>{r.verifyMode || '—'}</td>
+                <td className="pe-4" style={{ fontSize: 'var(--hz-text-sm)' }}>{r.deviceName || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
   );
 }
 

@@ -24,6 +24,7 @@ const ROUTES = [
   },
 
   { pattern: '/leave', crumbs: [{ label: 'Leave' }] },
+  { pattern: '/my-payslip', crumbs: [{ label: 'My Payslip', dynamic: true }] },
 
   { pattern: '/recruitment', crumbs: [{ label: 'Recruitment' }] },
   {
@@ -31,6 +32,7 @@ const ROUTES = [
     crumbs: [{ label: 'Recruitment', path: '/recruitment' }, { label: 'Pipeline', dynamic: true }],
   },
   { pattern: '/my-interviews', crumbs: [{ label: 'My Interviews' }] },
+  { pattern: '/my-recruitment', crumbs: [{ label: 'My Recruiting' }] },
 
   { pattern: '/performance', crumbs: [{ label: 'Performance' }] },
 
@@ -61,6 +63,7 @@ const ROUTES = [
   },
 
   { pattern: '/reports', crumbs: [{ label: 'Reports' }] },
+  { pattern: '/executive', crumbs: [{ label: 'Executive Overview' }] },
 
   {
     pattern: '/settings/users',

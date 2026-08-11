@@ -19,6 +19,8 @@ import CareersList from './pages/careers/CareersList';
 import JobApply from './pages/careers/JobApply';
 import PerformanceHub from './pages/performance/PerformanceHub';
 import Reports from './pages/reports/Reports';
+import ExecutiveOverview from './pages/reports/ExecutiveOverview';
+import RecruiterDashboard from './pages/recruitment/RecruiterDashboard';
 import SalaryDashboard from './pages/salary/SalaryDashboard';
 import EmployeeSalaryList from './pages/salary/EmployeeSalaryList';
 import SalaryStructurePage from './pages/salary/SalaryStructurePage';
@@ -54,6 +56,7 @@ export default function App() {
           <Route path="leave" element={<LeaveRequests />} />
           <Route path="recruitment" element={<JobOpenings />} />
           <Route path="recruitment/:jobOpeningId" element={<CandidatePipeline />} />
+          <Route path="my-recruitment" element={<RecruiterDashboard />} />
           <Route path="my-interviews" element={<MyInterviews />} />
           <Route path="performance" element={<PerformanceHub />} />
           <Route path="salary" element={<SalaryDashboard />} />
@@ -62,7 +65,9 @@ export default function App() {
           <Route path="salary/structure" element={<SalaryStructurePage />} />
           <Route path="salary/payroll-processing" element={<PayrollProcessing />} />
           <Route path="salary/reports" element={<SalaryReports />} />
+          <Route path="my-payslip" element={<SalaryDetails />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="executive" element={<ExecutiveOverview />} />
           <Route path="settings/users" element={<SettingsUsers />} />
           <Route path="settings/organization" element={<SettingsOrganization />} />
           <Route path="settings/leave" element={<SettingsLeave />} />

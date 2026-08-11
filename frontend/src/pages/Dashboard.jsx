@@ -125,7 +125,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="col-12 col-md-4">
-            <Link to="/leave" className="text-decoration-none">
+            <Link to={`/employees/${user?.employeeId || ''}?tab=leave`} className="text-decoration-none">
               <Card hoverable className="h-100">
                 <div className="d-flex align-items-center gap-3">
                   <div className="hz-stat__icon" style={{ background: 'var(--hz-warning-50)', color: 'var(--hz-warning-500)' }}>
@@ -136,7 +136,7 @@ export default function Dashboard() {
                       Leave
                     </p>
                     <p className="text-secondary-hz" style={{ fontSize: 12, marginBottom: 0 }}>
-                      Apply or check your balance
+                      Check your balance and history
                     </p>
                   </div>
                 </div>
@@ -144,7 +144,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="col-12 col-md-4">
-            <Link to="/attendance" className="text-decoration-none">
+            <Link to={`/employees/${user?.employeeId || ''}?tab=attendance`} className="text-decoration-none">
               <Card hoverable className="h-100">
                 <div className="d-flex align-items-center gap-3">
                   <div className="hz-stat__icon" style={{ background: 'var(--hz-success-50)', color: 'var(--hz-success-500)' }}>

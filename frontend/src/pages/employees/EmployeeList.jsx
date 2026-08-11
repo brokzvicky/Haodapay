@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { Search, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Search, UserPlus, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { employeesApi } from '../../api/endpoints/employees';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -60,14 +60,18 @@ const COLUMNS = [
 ];
 
 export default function EmployeeList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const departmentId = searchParams.get('departmentId');
+  const departmentName = searchParams.get('departmentName');
+
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const pageSize = 25;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['employees-paged', search, page],
-    queryFn: () => employeesApi.listPaged(search, page, pageSize),
+    queryKey: ['employees-paged', search, page, departmentId],
+    queryFn: () => employeesApi.listPaged(search, page, pageSize, departmentId),
   });
 
   const employees = data?.content;
@@ -77,6 +81,11 @@ export default function EmployeeList() {
   function handleSearchChange(value) {
     setSearch(value);
     setPage(0); // any new search starts back at page 1 - stale offsets into a different result set make no sense
+  }
+
+  function clearDepartmentFilter() {
+    setSearchParams({});
+    setPage(0);
   }
 
   return (
@@ -93,15 +102,37 @@ export default function EmployeeList() {
         </Button>
       </div>
 
-      <div className="position-relative" style={{ maxWidth: 360 }}>
-        <Search size={16} className="position-absolute" style={{ left: 12, top: 10, color: 'var(--hz-text-muted)' }} />
-        <input
-          type="search"
-          placeholder="Search by name, code, or email…"
-          className="form-control ps-5"
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-        />
+      <div className="d-flex align-items-center gap-2 flex-wrap">
+        <div className="position-relative" style={{ maxWidth: 360, width: '100%' }}>
+          <Search size={16} className="position-absolute" style={{ left: 12, top: 10, color: 'var(--hz-text-muted)' }} />
+          <input
+            type="search"
+            placeholder="Search by name, code, or email…"
+            className="form-control ps-5"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </div>
+
+        {departmentId && (
+          <div
+            className="d-inline-flex align-items-center gap-2 px-2 py-1 rounded-3"
+            style={{ background: 'var(--hz-primary-50)', border: '1px solid var(--hz-primary-100)' }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--hz-primary-700)' }}>
+              Department: {departmentName || departmentId}
+            </span>
+            <button
+              type="button"
+              onClick={clearDepartmentFilter}
+              className="btn btn-link p-0 d-flex align-items-center"
+              style={{ color: 'var(--hz-primary-700)' }}
+              aria-label="Clear department filter"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
       <Card bodyClassName="p-0">

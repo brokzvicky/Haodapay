@@ -2,8 +2,8 @@ import { axiosClient } from '../axiosClient';
 
 export const employeesApi = {
   list: (search) => axiosClient.get('/api/employees', { params: search ? { search } : {} }).then((res) => res.data),
-  listPaged: (search, page = 0, size = 25) =>
-    axiosClient.get('/api/employees/paged', { params: { search: search || undefined, page, size } }).then((res) => res.data),
+  listPaged: (search, page = 0, size = 25, departmentId) =>
+    axiosClient.get('/api/employees/paged', { params: { search: search || undefined, departmentId: departmentId || undefined, page, size } }).then((res) => res.data),
   getById: (id) => axiosClient.get(`/api/employees/${id}`).then((res) => res.data),
   create: (payload) => axiosClient.post('/api/employees', payload).then((res) => res.data),
   update: (id, payload) => axiosClient.put(`/api/employees/${id}`, payload).then((res) => res.data),

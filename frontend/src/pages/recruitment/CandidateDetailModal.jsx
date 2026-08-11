@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Star, Download, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { X, Star, Download, Eye, CalendarClock, CheckCircle2, UserPlus, ClipboardCheck, ArrowRightCircle, Award, Send, FileText, Clock3 } from 'lucide-react';
 import { candidatesApi, interviewsApi } from '../../api/endpoints/recruitment';
 import { axiosClient } from '../../api/axiosClient';
 import Badge from '../../components/ui/Badge';
@@ -91,7 +91,10 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
               <div className="col-12">
                 <div style={{ fontSize: 11, color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>Resume</div>
                 {candidate.hasResume ? (
-                  <ResumeDownloadLink candidateId={candidate.id} filename={candidate.resumeOriginalName} />
+                  <div className="d-flex align-items-center gap-3">
+                    <ResumePreviewLink candidateId={candidate.id} />
+                    <ResumeDownloadLink candidateId={candidate.id} filename={candidate.resumeOriginalName} />
+                  </div>
                 ) : candidate.resumeUrl ? (
                   <a href={candidate.resumeUrl} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--hz-text-sm)' }}>{candidate.resumeUrl}</a>
                 ) : (
@@ -99,6 +102,8 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                 )}
               </div>
             </div>
+
+            <NotesSection candidate={candidate} onSaved={() => queryClient.invalidateQueries({ queryKey: ['candidate', candidateId] })} />
 
             {/* Screening review */}
             {(candidate.rating || candidate.remarks || candidate.rejectionReason) && (
@@ -206,6 +211,8 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                 <Button onClick={() => acceptOffer.mutate()} loading={acceptOffer.isPending}>Mark Offer Accepted &amp; Onboard</Button>
               )}
             </div>
+
+            <TimelineSection candidateId={candidate.id} />
           </div>
         </div>
       </div>
@@ -217,6 +224,151 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
       {action === 'offer' && <GenerateOfferModal candidate={candidate} onClose={() => setAction(null)} />}
       {feedbackFor && <InterviewFeedbackModal interview={feedbackFor} candidateId={candidateId} onClose={() => setFeedbackFor(null)} />}
     </>
+  );
+}
+
+const TIMELINE_ACTION_META = {
+  CREATE: { label: 'Added to pipeline', icon: UserPlus },
+  REVIEW: { label: 'Application reviewed', icon: ClipboardCheck },
+  NOTES_UPDATED: { label: 'Notes updated', icon: FileText },
+  STAGE_CHANGE: { label: 'Stage updated', icon: ArrowRightCircle },
+  MANAGER_ROUND_ASSIGNED: { label: 'Manager round assigned', icon: CalendarClock },
+  OFFER_GENERATED: { label: 'Offer generated', icon: Award },
+  OFFER_LETTER_UPLOADED: { label: 'Offer letter uploaded', icon: FileText },
+  OFFER_LETTER_SENT: { label: 'Offer letter sent', icon: Send },
+  OFFER_ACCEPTED: { label: 'Offer accepted', icon: CheckCircle2 },
+  // Interview entity events, merged into this same timeline server-side.
+  DECISION: { label: 'Interview decision recorded', icon: ClipboardCheck },
+  INVITE_RESENT: { label: 'Interview invite resent', icon: Send },
+};
+const DEFAULT_TIMELINE_META = { label: null, icon: Clock3 };
+
+function TimelineSection({ candidateId }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['candidate-timeline', candidateId],
+    queryFn: () => candidatesApi.timeline(candidateId),
+  });
+
+  return (
+    <div className="pt-2" style={{ borderTop: '1px solid var(--hz-border)' }}>
+      <span style={{ fontSize: 11, color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>Timeline</span>
+
+      {isLoading && <p style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-muted)', marginTop: 8 }}>Loading history…</p>}
+      {isError && <p style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-muted)', marginTop: 8 }}>Couldn't load this candidate's history.</p>}
+      {!isLoading && !isError && (!data || data.length === 0) && (
+        <p style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-muted)', marginTop: 8 }}>No recorded activity yet.</p>
+      )}
+
+      {!isLoading && !isError && data?.length > 0 && (
+        <div className="d-flex flex-column gap-3 mt-2">
+          {data.map((event) => {
+            const meta = TIMELINE_ACTION_META[event.action] || DEFAULT_TIMELINE_META;
+            const Icon = meta.icon;
+            return (
+              <div key={event.id} className="d-flex gap-2">
+                <span
+                  className="d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--hz-gray-100)', color: 'var(--hz-text-secondary)' }}
+                >
+                  <Icon size={13} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, color: 'var(--hz-text-primary)' }}>
+                    {meta.label || event.action}
+                  </div>
+                  {event.details && (
+                    <div style={{ fontSize: 12, color: 'var(--hz-text-secondary)' }}>{event.details}</div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--hz-text-muted)' }}>
+                    {event.performedBy || 'System'} · {new Date(event.performedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotesSection({ candidate, onSaved }) {
+  const [notes, setNotes] = useState(candidate.notes || '');
+  const [error, setError] = useState(null);
+  const dirty = notes !== (candidate.notes || '');
+
+  const save = useMutation({
+    mutationFn: () => candidatesApi.updateNotes(candidate.id, notes),
+    onSuccess: () => {
+      setError(null);
+      onSaved();
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Could not save notes.'),
+  });
+
+  return (
+    <div>
+      <div className="d-flex align-items-center justify-content-between mb-1">
+        <span style={{ fontSize: 11, color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>Recruiter Notes</span>
+        {dirty && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+          >
+            {save.isPending ? 'Saving…' : 'Save Notes'}
+          </button>
+        )}
+      </div>
+      <textarea
+        className="form-control"
+        rows={3}
+        placeholder="Screening impressions, interview follow-ups, anything worth remembering about this candidate…"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ fontSize: 'var(--hz-text-sm)' }}
+      />
+      {error && <p style={{ fontSize: 12, color: 'var(--hz-danger-600)', marginTop: 4, marginBottom: 0 }}>{error}</p>}
+    </div>
+  );
+}
+
+function ResumePreviewLink({ candidateId }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  async function handlePreview() {
+    setLoading(true);
+    setError(false);
+    try {
+      const response = await candidatesApi.previewResume(candidateId);
+      const url = window.URL.createObjectURL(response.data);
+      // Opened in a new tab rather than an inline <iframe> here - the
+      // browser's own viewer handles PDF natively and falls back to its
+      // normal open/download behavior for doc/docx, which a homegrown
+      // in-modal preview can't do for non-PDF files anyway. Same choice
+      // OfferLetterPanel.jsx already made for the same reason.
+      window.open(url, '_blank', 'noopener');
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        className="btn btn-link p-0 d-inline-flex align-items-center gap-1"
+        style={{ fontSize: 'var(--hz-text-sm)' }}
+        onClick={handlePreview}
+        disabled={loading}
+      >
+        <Eye size={14} /> {loading ? 'Opening…' : 'Preview'}
+      </button>
+      {error && <div style={{ fontSize: 11, color: 'var(--hz-danger-600)' }}>Could not open the preview.</div>}
+    </div>
   );
 }
 

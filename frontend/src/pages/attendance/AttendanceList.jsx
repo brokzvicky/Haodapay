@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Radio, Clock, Fingerprint } from 'lucide-react';
+import { Radio, Clock, Fingerprint, AlertTriangle, CalendarOff } from 'lucide-react';
 import { attendanceApi } from '../../api/endpoints/attendance';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -14,6 +14,57 @@ import { SkeletonText } from '../../components/ui/Skeleton';
 function PunchBadge({ type }) {
   const variant = type === 'IN' ? 'success' : type === 'OUT' ? 'danger' : 'neutral';
   return <Badge variant={variant}>{type}</Badge>;
+}
+
+/**
+ * "Exception" here means exactly one thing: an active employee with zero
+ * punches today, who also isn't on approved leave - see
+ * AttendanceExceptionDTO on the backend for why lateness/early-leave
+ * aren't included (no shift/scheduled-hours concept exists to measure
+ * against, so that would mean guessing a threshold).
+ */
+function AttendanceExceptionsCard() {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['attendance-exceptions'],
+    queryFn: () => attendanceApi.exceptions(),
+  });
+
+  return (
+    <Card
+      title="Attendance Exceptions"
+      subtitle={data?.date ? `Employees with no punch on ${data.date}` : undefined}
+    >
+      {isLoading && <SkeletonText lines={2} />}
+      {isError && <ErrorState description="Couldn't load exceptions." onRetry={refetch} />}
+      {!isLoading && !isError && data && !data.workingDay && (
+        <EmptyState icon={CalendarOff} title="Not a working day" description="Weekends and company holidays are excluded from this check." />
+      )}
+      {!isLoading && !isError && data?.workingDay && data.missingPunch.length === 0 && (
+        <EmptyState icon={Clock} title="No exceptions" description="Every active employee has either punched in or is on approved leave today." />
+      )}
+      {!isLoading && !isError && data?.workingDay && data.missingPunch.length > 0 && (
+        <div className="d-flex flex-column gap-2">
+          <div className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: 13, color: 'var(--hz-warning-600)' }}>
+            <AlertTriangle size={15} />
+            {data.missingPunch.length} employee{data.missingPunch.length === 1 ? '' : 's'} with no punch today
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            {data.missingPunch.map((emp) => (
+              <Link
+                key={emp.id}
+                to={`/employees/${emp.id}`}
+                className="d-flex align-items-center gap-2 text-decoration-none px-2 py-1 rounded-3"
+                style={{ background: 'var(--hz-gray-50)', border: '1px solid var(--hz-border)' }}
+              >
+                <Avatar name={emp.fullName} size="sm" />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--hz-text-primary)' }}>{emp.fullName}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
 }
 
 export default function AttendanceList() {
@@ -76,6 +127,8 @@ export default function AttendanceList() {
           </div>
         </div>
       </div>
+
+      <AttendanceExceptionsCard />
 
       <Card bodyClassName="p-0">
         {isLoading && (

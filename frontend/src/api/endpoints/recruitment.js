@@ -12,6 +12,8 @@ export const candidatesApi = {
   create: (payload) => axiosClient.post('/api/candidates', payload).then((res) => res.data),
   // decision: 'SHORTLISTED' | 'HOLD' | 'REJECTED', plus optional rating/remarks/rejectionReason
   review: (id, payload) => axiosClient.patch(`/api/candidates/${id}/review`, payload).then((res) => res.data),
+  updateNotes: (id, notes) => axiosClient.patch(`/api/candidates/${id}/notes`, { notes }).then((res) => res.data),
+  timeline: (id) => axiosClient.get(`/api/candidates/${id}/timeline`).then((res) => res.data),
   // targetStage: 'ROUND1' | 'ROUND2' | 'ROUND3' | 'HOLD' | 'REJECTED'
   advance: (id, payload) => axiosClient.patch(`/api/candidates/${id}/advance`, payload).then((res) => res.data),
   generateOffer: (id, payload) => axiosClient.post(`/api/candidates/${id}/generate-offer`, payload).then((res) => res.data),
@@ -30,6 +32,8 @@ export const candidatesApi = {
   // Streamed inline (Content-Disposition: inline) rather than a plain URL, since the endpoint needs the same auth header as everything else - callers open the resulting blob in a new tab.
   previewOfferLetter: (id) => axiosClient.get(`/api/candidates/${id}/offer-letter/preview`, { responseType: 'blob' }),
   sendOfferLetter: (id) => axiosClient.post(`/api/candidates/${id}/send-offer-letter`).then((res) => res.data),
+  // Same inline-preview pattern as previewOfferLetter above, for the candidate's resume.
+  previewResume: (id) => axiosClient.get(`/api/candidates/${id}/resume/preview`, { responseType: 'blob' }),
 };
 
 export const interviewsApi = {
