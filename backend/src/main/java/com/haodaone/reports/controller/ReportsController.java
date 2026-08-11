@@ -68,7 +68,7 @@ public class ReportsController {
         EMPLOYMENT_TYPES.forEach(t -> byEmploymentType.put(t, employeeRepository.countByEmploymentTypeAndDeletedFalse(t)));
 
         List<EmployeeReportDTO.DepartmentCount> byDepartment = departmentRepository.findAllByDeletedFalseOrderByNameAsc().stream()
-                .map(d -> new EmployeeReportDTO.DepartmentCount(d.getName(), employeeRepository.countByDepartmentIdAndDeletedFalse(d.getId())))
+                .map(d -> new EmployeeReportDTO.DepartmentCount(d.getId(), d.getName(), employeeRepository.countByDepartmentIdAndDeletedFalse(d.getId())))
                 .filter(dc -> dc.getCount() > 0)
                 .toList();
 

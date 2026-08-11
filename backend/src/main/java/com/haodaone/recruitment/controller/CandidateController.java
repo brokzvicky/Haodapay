@@ -1,6 +1,10 @@
 package com.haodaone.recruitment.controller;
 
+import com.haodaone.audit.entity.AuditLog;
+import com.haodaone.audit.repository.AuditLogRepository;
 import com.haodaone.recruitment.dto.CandidateDTO;
+import com.haodaone.recruitment.entity.Interview;
+import com.haodaone.recruitment.repository.InterviewRepository;
 import com.haodaone.recruitment.service.CandidateService;
 import com.haodaone.recruitment.service.OfferLetterS3StorageService;
 import com.haodaone.recruitment.service.ResumeS3StorageService;
@@ -13,7 +17,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/candidates")
@@ -22,18 +29,58 @@ public class CandidateController {
     private final CandidateService candidateService;
     private final ResumeS3StorageService resumeStorageService;
     private final OfferLetterS3StorageService offerLetterStorageService;
+    private final AuditLogRepository auditLogRepository;
+    private final InterviewRepository interviewRepository;
 
     public CandidateController(CandidateService candidateService, ResumeS3StorageService resumeStorageService,
-                                OfferLetterS3StorageService offerLetterStorageService) {
+                                OfferLetterS3StorageService offerLetterStorageService, AuditLogRepository auditLogRepository,
+                                InterviewRepository interviewRepository) {
         this.candidateService = candidateService;
         this.resumeStorageService = resumeStorageService;
         this.offerLetterStorageService = offerLetterStorageService;
+        this.auditLogRepository = auditLogRepository;
+        this.interviewRepository = interviewRepository;
     }
 
     @GetMapping
     @PreAuthorize("hasAuthority('RECRUITMENT_VIEW')")
     public List<CandidateDTO> listAll(@RequestParam(required = false) Long jobOpeningId) {
         return candidateService.listAll(jobOpeningId);
+    }
+
+    /**
+     * Every review/advance/notes/offer action on this candidate already
+     * writes an AuditLogService.log("Candidate", id, ...) entry - this
+     * just surfaces that existing trail as a timeline instead of adding a
+     * second, parallel "candidate events" table that would duplicate it.
+     * Scoped to RECRUITMENT_VIEW rather than the general AUDIT_VIEW the
+     * org-wide audit log requires, since a recruiter needs their own
+     * candidates' history, not admin access to every entity's audit trail.
+     *
+     * Interview scheduling/decisions log under entityName="Interview" with
+     * the interview's own ID, not the candidate's - missing those would
+     * make this timeline silently incomplete for exactly the events
+     * (interview scheduled, decision made) a recruiter most wants to see.
+     * Resolved by finding this candidate's interview IDs first, then
+     * pulling both entity types and merging by timestamp.
+     */
+    @GetMapping("/{id}/timeline")
+    @PreAuthorize("hasAuthority('RECRUITMENT_VIEW')")
+    public List<AuditLog> timeline(@PathVariable Long id) {
+        candidateService.getById(id); // 404s cleanly if the candidate doesn't exist, same as every other /{id} endpoint here
+
+        List<AuditLog> candidateEvents = auditLogRepository.findByEntityNameAndEntityIdOrderByPerformedAtDesc("Candidate", id);
+
+        List<Long> interviewIds = interviewRepository.findAllByCandidateIdAndDeletedFalseOrderByScheduledAtDesc(id).stream()
+                .map(Interview::getId)
+                .toList();
+        List<AuditLog> interviewEvents = interviewIds.stream()
+                .flatMap(interviewId -> auditLogRepository.findByEntityNameAndEntityIdOrderByPerformedAtDesc("Interview", interviewId).stream())
+                .toList();
+
+        return Stream.concat(candidateEvents.stream(), interviewEvents.stream())
+                .sorted(Comparator.comparing(AuditLog::getPerformedAt).reversed())
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
@@ -53,6 +100,13 @@ public class CandidateController {
     @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
     public CandidateDTO review(@PathVariable Long id, @Valid @RequestBody CandidateDTO.ReviewRequest request) {
         return candidateService.review(id, request);
+    }
+
+    /** Free-text recruiter notes on this candidate - see CandidateService#updateNotes for why this stays a single overwritable field rather than a note-per-entry history. */
+    @PatchMapping("/{id}/notes")
+    @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
+    public CandidateDTO updateNotes(@PathVariable Long id, @Valid @RequestBody CandidateDTO.UpdateNotesRequest request) {
+        return candidateService.updateNotes(id, request);
     }
 
     /** Round-by-round advancement (or hold/reject) once past the initial review. Also how HR records Reject/Hold after the HR interview - "Select for Manager Round" instead goes through /assign-manager below, since it needs scheduling details. */
@@ -92,6 +146,24 @@ public class CandidateController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename.replace("\"", "") + "\"")
+                .body(resource);
+    }
+
+    /**
+     * Same bytes as downloadResume, streamed inline (Content-Disposition:
+     * inline) so the frontend can open it in a new tab and let the
+     * browser's own PDF viewer render it, rather than forcing a download -
+     * same pattern as previewOfferLetter below, which this mirrors.
+     */
+    @GetMapping("/{id}/resume/preview")
+    @PreAuthorize("hasAuthority('RECRUITMENT_VIEW')")
+    public ResponseEntity<InputStreamResource> previewResume(@PathVariable Long id) {
+        CandidateDTO candidate = candidateService.getById(id);
+        InputStreamResource resource = resumeStorageService.retrieve(resumeKeyOf(id));
+        String filename = candidate.getResumeOriginalName() != null ? candidate.getResumeOriginalName() : "resume";
+        return ResponseEntity.ok()
+                .contentType(contentTypeFor(filename))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename.replace("\"", "") + "\"")
                 .body(resource);
     }
 

@@ -1,6 +1,7 @@
 package com.haodaone.recruitment.entity;
 
 import com.haodaone.common.entity.BaseEntity;
+import com.haodaone.employee.entity.Employee;
 import com.haodaone.org.entity.Department;
 import com.haodaone.org.entity.Designation;
 import jakarta.persistence.*;
@@ -40,6 +41,11 @@ public class JobOpening extends BaseEntity {
 
     @Column(name = "closed_date")
     private LocalDate closedDate;
+
+    /** Who's running this requisition - optional, see V8 migration. Powers the Recruiter persona's "my open reqs" scoping. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recruiter_id")
+    private Employee recruiter;
 
     public String getTitle() {
         return title;
@@ -111,5 +117,13 @@ public class JobOpening extends BaseEntity {
 
     public void setClosedDate(LocalDate closedDate) {
         this.closedDate = closedDate;
+    }
+
+    public Employee getRecruiter() {
+        return recruiter;
+    }
+
+    public void setRecruiter(Employee recruiter) {
+        this.recruiter = recruiter;
     }
 }

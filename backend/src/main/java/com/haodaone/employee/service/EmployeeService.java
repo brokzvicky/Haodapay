@@ -65,14 +65,15 @@ public class EmployeeService {
      * unpaginated list and would need rework to handle paging themselves;
      * this is purely additive.
      */
-    public PageResponse<EmployeeSummaryDTO> listPaged(String search, int page, int size) {
+    public PageResponse<EmployeeSummaryDTO> listPaged(String search, Long departmentId, int page, int size) {
         int safeSize = Math.min(Math.max(size, 1), 100);
         int safePage = Math.max(page, 0);
         var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "firstName"));
 
-        var result = (search == null || search.isBlank())
-                ? employeeRepository.findAllByDeletedFalse(pageable)
-                : employeeRepository.searchPaged(search.trim(), pageable);
+        String term = (search == null) ? "" : search.trim();
+        var result = departmentId != null
+                ? employeeRepository.searchPagedByDepartment(term, departmentId, pageable)
+                : (term.isEmpty() ? employeeRepository.findAllByDeletedFalse(pageable) : employeeRepository.searchPaged(term, pageable));
 
         return PageResponse.from(result, EmployeeSummaryDTO::from);
     }

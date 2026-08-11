@@ -20,6 +20,8 @@ public class JobOpeningDTO {
     private LocalDate postedDate;
     private long candidateCount;
     private long hiredCount;
+    private Long recruiterId;
+    private String recruiterName;
 
     public static JobOpeningDTO from(JobOpening j) {
         JobOpeningDTO dto = new JobOpeningDTO();
@@ -37,6 +39,10 @@ public class JobOpeningDTO {
         if (j.getDesignation() != null) {
             dto.designationId = j.getDesignation().getId();
             dto.designationTitle = j.getDesignation().getTitle();
+        }
+        if (j.getRecruiter() != null) {
+            dto.recruiterId = j.getRecruiter().getId();
+            dto.recruiterName = j.getRecruiter().getFullName();
         }
         return dto;
     }
@@ -101,6 +107,14 @@ public class JobOpeningDTO {
         return hiredCount;
     }
 
+    public Long getRecruiterId() {
+        return recruiterId;
+    }
+
+    public String getRecruiterName() {
+        return recruiterName;
+    }
+
     public static class CreateRequest {
         @NotBlank(message = "Title is required")
         private String title;
@@ -112,6 +126,7 @@ public class JobOpeningDTO {
         private int openingsCount = 1;
 
         private String description;
+        private Long recruiterId;
 
         public String getTitle() {
             return title;
@@ -159,6 +174,14 @@ public class JobOpeningDTO {
 
         public void setDescription(String description) {
             this.description = description;
+        }
+
+        public Long getRecruiterId() {
+            return recruiterId;
+        }
+
+        public void setRecruiterId(Long recruiterId) {
+            this.recruiterId = recruiterId;
         }
     }
 }

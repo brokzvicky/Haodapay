@@ -71,6 +71,25 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Page<Employee> searchPaged(@Param("term") String term, Pageable pageable);
 
     /**
+     * Paged directory filtered to one department - powers the drill-down
+     * from Reports' "Headcount by Department" bars straight into a
+     * pre-filtered Employee Directory. Deliberately a separate method
+     * rather than adding an optional departmentId param to searchPaged
+     * above: that method's `term` is required (empty string, not null,
+     * when unused - see EmployeeService#listPaged), so bolting an
+     * optional filter onto it would mean two different null-handling
+     * conventions in one query. searchForPayroll shows the same optional-
+     * param pattern already if this ever needs to merge with it.
+     */
+    @Query("select e from Employee e where e.deleted = false and e.department.id = :departmentId and (" +
+            ":term = '' or " +
+            "lower(e.firstName) like lower(concat('%', :term, '%')) or " +
+            "lower(e.lastName) like lower(concat('%', :term, '%')) or " +
+            "lower(e.employeeCode) like lower(concat('%', :term, '%')) or " +
+            "lower(e.email) like lower(concat('%', :term, '%')))")
+    Page<Employee> searchPagedByDepartment(@Param("term") String term, @Param("departmentId") Long departmentId, Pageable pageable);
+
+    /**
      * Filterable roster used by the Salary module's Employee Salary List
      * (search + department + status, all optional). Kept here rather than
      * duplicated in the salary package since Employee filtering belongs

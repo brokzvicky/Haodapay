@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 /** Employee Salary List + Salary Details. */
 @RestController
 @RequestMapping("/api/salary/employees")
-@PreAuthorize("hasAuthority('SALARY_VIEW')")
 public class EmployeeSalaryController {
 
     private final EmployeeSalaryService employeeSalaryService;
@@ -25,6 +24,7 @@ public class EmployeeSalaryController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('SALARY_VIEW')")
     public Page<EmployeeSalarySummaryDTO> list(@RequestParam(required = false) String search,
                                                 @RequestParam(required = false) Long departmentId,
                                                 @RequestParam(required = false) String status,
@@ -35,7 +35,15 @@ public class EmployeeSalaryController {
         return employeeSalaryService.list(search, departmentId, status, sortBy, sortDir, PageRequest.of(page, size));
     }
 
+    /**
+     * Also serves the ESS "My Payslip" screen - an employee viewing their
+     * own detail doesn't need SALARY_VIEW at all, same self-access pattern
+     * as leave/attendance/profile (see EmployeeSecurity). SALARY_VIEW still
+     * gates viewing anyone else's, and list() above (the full directory)
+     * has no self-bypass since "my own record" isn't "everyone's".
+     */
     @GetMapping("/{employeeId}")
+    @PreAuthorize("hasAuthority('SALARY_VIEW') or @employeeSecurity.isSelf(#employeeId)")
     public EmployeeSalaryDetailDTO getDetail(@PathVariable Long employeeId) {
         return employeeSalaryService.getDetail(employeeId);
     }

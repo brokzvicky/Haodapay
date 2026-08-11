@@ -556,4 +556,18 @@ public class CandidateDTO {
             this.instructions = instructions;
         }
     }
+
+    public static class UpdateNotesRequest {
+        // Deliberately no @NotBlank - clearing the notes back to empty is
+        // a valid edit, not something to reject.
+        private String notes;
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+    }
 }

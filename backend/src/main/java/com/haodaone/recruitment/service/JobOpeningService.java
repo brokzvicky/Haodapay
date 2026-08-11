@@ -3,6 +3,7 @@ package com.haodaone.recruitment.service;
 import com.haodaone.audit.service.AuditLogService;
 import com.haodaone.common.exception.BadRequestException;
 import com.haodaone.common.exception.ResourceNotFoundException;
+import com.haodaone.employee.repository.EmployeeRepository;
 import com.haodaone.org.repository.DepartmentRepository;
 import com.haodaone.org.repository.DesignationRepository;
 import com.haodaone.recruitment.dto.JobOpeningDTO;
@@ -25,15 +26,17 @@ public class JobOpeningService {
     private final CandidateRepository candidateRepository;
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
+    private final EmployeeRepository employeeRepository;
     private final AuditLogService auditLogService;
 
     public JobOpeningService(JobOpeningRepository jobOpeningRepository, CandidateRepository candidateRepository,
                               DepartmentRepository departmentRepository, DesignationRepository designationRepository,
-                              AuditLogService auditLogService) {
+                              EmployeeRepository employeeRepository, AuditLogService auditLogService) {
         this.jobOpeningRepository = jobOpeningRepository;
         this.candidateRepository = candidateRepository;
         this.departmentRepository = departmentRepository;
         this.designationRepository = designationRepository;
+        this.employeeRepository = employeeRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -69,6 +72,10 @@ public class JobOpeningService {
         if (request.getDesignationId() != null) {
             opening.setDesignation(designationRepository.findById(request.getDesignationId())
                     .orElseThrow(() -> new BadRequestException("Unknown designation: " + request.getDesignationId())));
+        }
+        if (request.getRecruiterId() != null) {
+            opening.setRecruiter(employeeRepository.findById(request.getRecruiterId())
+                    .orElseThrow(() -> new BadRequestException("Unknown employee: " + request.getRecruiterId())));
         }
 
         JobOpening saved = jobOpeningRepository.save(opening);

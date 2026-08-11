@@ -207,6 +207,24 @@ public class CandidateService {
         return CandidateDTO.from(saved);
     }
 
+    /**
+     * Free-text recruiter notes. A single field on Candidate (not a
+     * timestamped multi-entry history) - kept simple to match what
+     * actually exists on the entity today rather than introducing a new
+     * Note entity/table for what was, until now, an unwired field. Each
+     * edit overwrites the previous text, same as the entity always
+     * supported; the audit log entry is what preserves history of who
+     * changed it and when, not a note-per-row schema.
+     */
+    @Transactional
+    public CandidateDTO updateNotes(Long id, CandidateDTO.UpdateNotesRequest request) {
+        Candidate candidate = findActiveOrThrow(id);
+        candidate.setNotes(request.getNotes());
+        Candidate saved = candidateRepository.save(candidate);
+        auditLogService.log("Candidate", saved.getId(), "NOTES_UPDATED", "Notes updated for '" + saved.getFullName() + "'");
+        return CandidateDTO.from(saved);
+    }
+
     /** Round-by-round pipeline advancement (or hold/reject) once past the initial review. */
     @Transactional
     public CandidateDTO advance(Long id, CandidateDTO.AdvanceStageRequest request) {

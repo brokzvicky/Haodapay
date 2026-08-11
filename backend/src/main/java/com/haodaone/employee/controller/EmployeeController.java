@@ -36,13 +36,14 @@ public class EmployeeController {
         return employeeService.listAll(search);
     }
 
-    /** Paged directory listing - page is 0-indexed, size defaults to 25 and is capped at 100 (see EmployeeService#listPaged). */
+    /** Paged directory listing - page is 0-indexed, size defaults to 25 and is capped at 100 (see EmployeeService#listPaged). departmentId optionally scopes it, e.g. the drill-down from Reports' department bars. */
     @GetMapping("/paged")
     @PreAuthorize("hasAuthority('EMPLOYEE_VIEW')")
     public PageResponse<EmployeeSummaryDTO> listPaged(@RequestParam(required = false) String search,
+                                                        @RequestParam(required = false) Long departmentId,
                                                         @RequestParam(defaultValue = "0") int page,
                                                         @RequestParam(defaultValue = "25") int size) {
-        return employeeService.listPaged(search, page, size);
+        return employeeService.listPaged(search, departmentId, page, size);
     }
 
     @GetMapping("/{id}")

@@ -1,14 +1,22 @@
 package com.haodaone.dashboard.controller;
 
 import com.haodaone.dashboard.dto.DashboardSummaryDTO;
+import com.haodaone.dashboard.dto.RecruiterDashboardDTO;
 import com.haodaone.dashboard.dto.TeamDashboardDTO;
 import com.haodaone.employee.dto.EmployeeSummaryDTO;
 import com.haodaone.employee.entity.Employee;
 import com.haodaone.employee.repository.EmployeeRepository;
 import com.haodaone.leave.service.LeaveRequestService;
 import com.haodaone.org.repository.DepartmentRepository;
+import com.haodaone.recruitment.dto.CandidateDTO;
+import com.haodaone.recruitment.dto.InterviewDTO;
+import com.haodaone.recruitment.dto.JobOpeningDTO;
+import com.haodaone.recruitment.repository.CandidateRepository;
+import com.haodaone.recruitment.repository.InterviewRepository;
+import com.haodaone.recruitment.repository.JobOpeningRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,12 +42,19 @@ public class DashboardController {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final LeaveRequestService leaveRequestService;
+    private final JobOpeningRepository jobOpeningRepository;
+    private final CandidateRepository candidateRepository;
+    private final InterviewRepository interviewRepository;
 
     public DashboardController(EmployeeRepository employeeRepository, DepartmentRepository departmentRepository,
-                                LeaveRequestService leaveRequestService) {
+                                LeaveRequestService leaveRequestService, JobOpeningRepository jobOpeningRepository,
+                                CandidateRepository candidateRepository, InterviewRepository interviewRepository) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.leaveRequestService = leaveRequestService;
+        this.jobOpeningRepository = jobOpeningRepository;
+        this.candidateRepository = candidateRepository;
+        this.interviewRepository = interviewRepository;
     }
 
     @GetMapping("/summary")

@@ -53,12 +53,18 @@ public class EmployeeReportDTO {
     }
 
     public static class DepartmentCount {
+        private final Long departmentId;
         private final String departmentName;
         private final long count;
 
-        public DepartmentCount(String departmentName, long count) {
+        public DepartmentCount(Long departmentId, String departmentName, long count) {
+            this.departmentId = departmentId;
             this.departmentName = departmentName;
             this.count = count;
+        }
+
+        public Long getDepartmentId() {
+            return departmentId;
         }
 
         public String getDepartmentName() {
