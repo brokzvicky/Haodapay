@@ -68,7 +68,7 @@ export default function CandidateDetailModal({ candidateId, onClose }) {
                 {candidate.email} · {candidate.phone} · {candidate.jobOpeningTitle}
               </div>
             </div>
-            <button className="btn btn-light border-0 p-1" onClick={onClose}>
+            <button className="btn btn-light border-0 p-1" onClick={onClose} aria-label="Close candidate details">
               <X size={18} />
             </button>
           </div>

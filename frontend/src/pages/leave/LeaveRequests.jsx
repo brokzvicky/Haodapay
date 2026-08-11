@@ -148,6 +148,7 @@ export default function LeaveRequests() {
                             style={{ color: 'var(--hz-success-600)' }}
                             onClick={() => decide.mutate({ id: r.id, approve: true })}
                             disabled={decide.isPending}
+                            aria-label={`Approve ${r.employeeName}'s leave request`}
                           >
                             <Check size={15} />
                           </button>
@@ -156,6 +157,7 @@ export default function LeaveRequests() {
                             style={{ color: 'var(--hz-danger-600)' }}
                             onClick={() => decide.mutate({ id: r.id, approve: false })}
                             disabled={decide.isPending}
+                            aria-label={`Reject ${r.employeeName}'s leave request`}
                           >
                             <XIcon size={15} />
                           </button>

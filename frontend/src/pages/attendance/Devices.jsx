@@ -75,10 +75,10 @@ export default function Devices() {
                           style={{ width: 160 }}
                           autoFocus
                         />
-                        <button className="btn btn-sm btn-light border-0" onClick={() => rename.mutate({ id: d.id, deviceName: editValue })}>
+                        <button className="btn btn-sm btn-light border-0" onClick={() => rename.mutate({ id: d.id, deviceName: editValue })} aria-label="Save device name">
                           <Check size={14} />
                         </button>
-                        <button className="btn btn-sm btn-light border-0" onClick={() => setEditingId(null)}>
+                        <button className="btn btn-sm btn-light border-0" onClick={() => setEditingId(null)} aria-label="Cancel renaming device">
                           <X size={14} />
                         </button>
                       </div>
@@ -91,6 +91,7 @@ export default function Devices() {
                             setEditingId(d.id);
                             setEditValue(d.deviceName);
                           }}
+                          aria-label={`Rename device "${d.deviceName}"`}
                         >
                           <Pencil size={12} />
                         </button>

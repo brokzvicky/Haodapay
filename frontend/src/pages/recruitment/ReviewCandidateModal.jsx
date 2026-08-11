@@ -69,7 +69,14 @@ export default function ReviewCandidateModal({ candidate, onClose }) {
           <label className="hz-form-label">Rating (optional)</label>
           <div className="d-flex gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" className="btn btn-light border-0 p-1" onClick={() => setRating(n === rating ? 0 : n)}>
+              <button
+                key={n}
+                type="button"
+                className="btn btn-light border-0 p-1"
+                onClick={() => setRating(n === rating ? 0 : n)}
+                aria-label={`Rate ${n} star${n === 1 ? '' : 's'}`}
+                aria-pressed={n <= rating}
+              >
                 <Star size={22} fill={n <= rating ? 'var(--hz-warning-500)' : 'none'} color={n <= rating ? 'var(--hz-warning-500)' : 'var(--hz-border)'} />
               </button>
             ))}

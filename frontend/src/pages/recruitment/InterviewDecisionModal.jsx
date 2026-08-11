@@ -26,7 +26,14 @@ function RatingInput({ label, value, onChange, required }) {
       </label>
       <div className="d-flex gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" className="btn btn-light border-0 p-1" onClick={() => onChange(n)}>
+          <button
+            key={n}
+            type="button"
+            className="btn btn-light border-0 p-1"
+            onClick={() => onChange(n)}
+            aria-label={`Rate ${n} star${n === 1 ? '' : 's'} for ${label}`}
+            aria-pressed={n <= value}
+          >
             <Star size={20} fill={n <= value ? 'var(--hz-warning-500)' : 'none'} color={n <= value ? 'var(--hz-warning-500)' : 'var(--hz-border)'} />
           </button>
         ))}

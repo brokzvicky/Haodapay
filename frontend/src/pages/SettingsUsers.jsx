@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { usersApi } from '../api/endpoints/users';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Avatar from '../components/ui/Avatar';
+import Dialog from '../components/ui/Dialog';
+import FormField from '../components/ui/FormField';
 import { SkeletonText } from '../components/ui/Skeleton';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
@@ -134,65 +136,35 @@ function CreateUserModal({ onClose }) {
   }
 
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-      style={{ background: 'rgba(15, 23, 42, 0.45)', zIndex: 50 }}
-      onClick={onClose}
-    >
-      <div className="hz-surface" style={{ width: 420, padding: 0 }} onClick={(e) => e.stopPropagation()}>
-        <div className="d-flex align-items-center justify-content-between p-4 pb-3" style={{ borderBottom: '1px solid var(--hz-border)' }}>
-          <h3 style={{ fontSize: 'var(--hz-text-lg)', fontWeight: 600, margin: 0 }}>New User</h3>
-          <button className="btn btn-light border-0 p-1" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-4">
-          {error && (
-            <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
-              {error}
-            </div>
-          )}
-          <Field label="Full Name" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} required />
-          <Field label="Username" value={form.username} onChange={(v) => setForm({ ...form, username: v })} required />
-          <Field label="Email" type="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} required />
-          <Field
-            label="Temporary Password"
-            type="password"
-            value={form.temporaryPassword}
-            onChange={(v) => setForm({ ...form, temporaryPassword: v })}
-            required
-          />
-          <p style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
-            The new user will be prompted to change this password on first login. New accounts default to the Employee role.
-          </p>
-          <div className="d-flex justify-content-end gap-2 mt-3">
-            <Button variant="secondary" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={createUser.isPending}>
-              Create User
-            </Button>
+    <Dialog open onClose={onClose} title="New User" size="sm">
+      <form onSubmit={handleSubmit}>
+        {error && (
+          <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
+            {error}
           </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, type = 'text', required }) {
-  return (
-    <div className="mb-3">
-      <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>
-        {label}
-      </label>
-      <input
-        type={type}
-        className="form-control"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-      />
-    </div>
+        )}
+        <FormField label="Full Name" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} required />
+        <FormField label="Username" value={form.username} onChange={(v) => setForm({ ...form, username: v })} required />
+        <FormField label="Email" type="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} required />
+        <FormField
+          label="Temporary Password"
+          type="password"
+          value={form.temporaryPassword}
+          onChange={(v) => setForm({ ...form, temporaryPassword: v })}
+          required
+        />
+        <p style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
+          The new user will be prompted to change this password on first login. New accounts default to the Employee role.
+        </p>
+        <div className="d-flex justify-content-end gap-2 mt-2">
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={createUser.isPending}>
+            Create User
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

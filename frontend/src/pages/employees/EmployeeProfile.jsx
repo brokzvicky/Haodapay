@@ -208,10 +208,10 @@ function OverviewTab({ employee }) {
                   placeholder="Device PIN"
                   autoFocus
                 />
-                <button className="btn btn-sm btn-light border-0" onClick={() => saveBiometric.mutate()}>
+                <button className="btn btn-sm btn-light border-0" onClick={() => saveBiometric.mutate()} aria-label="Save biometric mapping">
                   <Check size={14} />
                 </button>
-                <button className="btn btn-sm btn-light border-0" onClick={() => setEditingBiometric(false)}>
+                <button className="btn btn-sm btn-light border-0" onClick={() => setEditingBiometric(false)} aria-label="Cancel editing biometric mapping">
                   <X size={14} />
                 </button>
               </>
@@ -220,7 +220,7 @@ function OverviewTab({ employee }) {
                 <span style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>
                   {employee.biometricDeviceUserId || 'Not mapped'}
                 </span>
-                <button className="btn btn-sm btn-light border-0 p-1" onClick={() => setEditingBiometric(true)}>
+                <button className="btn btn-sm btn-light border-0 p-1" onClick={() => setEditingBiometric(true)} aria-label="Edit biometric mapping">
                   <Pencil size={12} />
                 </button>
               </>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X } from 'lucide-react';
 import { salaryStructuresApi } from '../../../api/endpoints/salary';
 import Button from '../../../components/ui/Button';
+import Dialog from '../../../components/ui/Dialog';
+import FormField from '../../../components/ui/FormField';
 import { useToast } from '../../../components/ui/Toast';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import SalaryComponentsFields, { EMPTY_COMPONENTS, computeTotals } from './SalaryComponentsFields';
@@ -79,78 +80,54 @@ export default function AssignSalaryStructureModal({ employee, onClose }) {
   const employeeCode = employee.employeeCode;
 
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-      style={{ background: 'rgba(15, 23, 42, 0.45)', zIndex: 50, padding: 16 }}
-      onClick={() => onClose(false)}
+    <Dialog
+      open
+      onClose={() => onClose(false)}
+      title={currentStructure ? 'Revise Salary Structure' : loadingCurrent ? 'Salary Structure' : 'Define Salary Structure'}
+      description={`${employeeName}${employeeCode ? ` · ${employeeCode}` : ''}`}
+      size="xl"
     >
-      <div className="hz-surface d-flex flex-column" style={{ width: 760, maxHeight: '92vh', padding: 0 }} onClick={(e) => e.stopPropagation()}>
-        <div className="d-flex align-items-center justify-content-between p-4 pb-3" style={{ borderBottom: '1px solid var(--hz-border)' }}>
-          <div>
-            <h3 style={{ fontSize: 'var(--hz-text-lg)', fontWeight: 600, margin: 0 }}>
-              {currentStructure ? 'Revise Salary Structure' : loadingCurrent ? 'Salary Structure' : 'Define Salary Structure'}
-            </h3>
-            <p className="text-secondary-hz mb-0" style={{ fontSize: 'var(--hz-text-sm)' }}>
-              {employeeName} {employeeCode ? `\u00b7 ${employeeCode}` : ''}
-            </p>
+      <form onSubmit={handleSubmit}>
+        {error && (
+          <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
+            {error}
           </div>
-          <button className="btn btn-light border-0 p-1" onClick={() => onClose(false)}>
-            <X size={18} />
-          </button>
-        </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="p-4 overflow-auto">
-          {error && (
-            <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
-              {error}
+        {loadingCurrent ? (
+          <div className="py-5 text-center" style={{ color: 'var(--hz-text-muted)', fontSize: 13 }}>
+            Loading current structure…
+          </div>
+        ) : (
+          <>
+            <div className="row g-3 mb-3">
+              <FormField col={6} label="Effective From" type="date" required value={effectiveFrom} onChange={setEffectiveFrom} />
+              <FormField col={6} label="Notes (optional)" placeholder="e.g. Annual appraisal revision" value={notes} onChange={setNotes} />
             </div>
-          )}
 
-          {loadingCurrent ? (
-            <div className="py-5 text-center" style={{ color: 'var(--hz-text-muted)', fontSize: 13 }}>
-              Loading current structure…
+            <SalaryComponentsFields components={components} onChange={set} />
+
+            <div
+              className="d-flex align-items-center justify-content-between mt-4 p-3"
+              style={{ background: 'var(--hz-gradient-surface)', border: '1px solid var(--hz-border)', borderRadius: 'var(--hz-radius-lg)' }}
+            >
+              <TotalTile label="Gross Salary" value={totals.gross} />
+              <TotalTile label="Total Deductions" value={totals.deductions} muted />
+              <TotalTile label="Net Salary" value={totals.net} emphasize />
             </div>
-          ) : (
-            <>
-              <div className="row g-3 mb-3">
-                <div className="col-6">
-                  <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>
-                    Effective From
-                  </label>
-                  <input type="date" className="form-control" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} required />
-                </div>
-                <div className="col-6">
-                  <label className="form-label" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>
-                    Notes (optional)
-                  </label>
-                  <input type="text" className="form-control" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Annual appraisal revision" />
-                </div>
-              </div>
 
-              <SalaryComponentsFields components={components} onChange={set} />
-
-              <div
-                className="d-flex align-items-center justify-content-between mt-4 p-3"
-                style={{ background: 'var(--hz-gradient-surface)', border: '1px solid var(--hz-border)', borderRadius: 'var(--hz-radius-lg)' }}
-              >
-                <TotalTile label="Gross Salary" value={totals.gross} />
-                <TotalTile label="Total Deductions" value={totals.deductions} muted />
-                <TotalTile label="Net Salary" value={totals.net} emphasize />
-              </div>
-
-              <div className="d-flex justify-content-end gap-2 mt-4">
-                <Button variant="secondary" type="button" onClick={() => onClose(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" loading={upsert.isPending}>
-                  {currentStructure ? 'Save Revision' : 'Save Structure'}
-                </Button>
-              </div>
-            </>
-          )}
-        </form>
-      </div>
-    </div>
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <Button variant="secondary" type="button" onClick={() => onClose(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={upsert.isPending}>
+                {currentStructure ? 'Save Revision' : 'Save Structure'}
+              </Button>
+            </div>
+          </>
+        )}
+      </form>
+    </Dialog>
   );
 }
 
