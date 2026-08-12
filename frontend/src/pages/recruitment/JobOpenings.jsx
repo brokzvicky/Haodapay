@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { jobOpeningsApi } from '../../api/endpoints/recruitment';
 import { departmentsApi, designationsApi } from '../../api/endpoints/organization';
 import Card from '../../components/ui/Card';
@@ -14,10 +14,36 @@ import FormField from '../../components/ui/FormField';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 
 const STATUS_VARIANT = { OPEN: 'success', ON_HOLD: 'warning', CLOSED: 'neutral' };
+const STATUS_TABS = [
+  { key: '', label: 'All' },
+  { key: 'OPEN', label: 'Open' },
+  { key: 'ON_HOLD', label: 'On Hold' },
+  { key: 'CLOSED', label: 'Closed' },
+];
 
 export default function JobOpenings() {
   const [showCreate, setShowCreate] = useState(false);
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const { data: openings, isLoading, isError, refetch } = useQuery({ queryKey: ['job-openings'], queryFn: jobOpeningsApi.list });
+
+  // Client-side, not a new backend query param: the requisition list for
+  // any one company is small enough (dozens, not thousands) that fetching
+  // everything once and narrowing it here is simpler than adding
+  // status/search params to an endpoint that's never needed them before -
+  // unlike the Employee Directory, which genuinely needed server-side
+  // paging at scale.
+  const filteredOpenings = useMemo(() => {
+    if (!openings) return openings;
+    return openings.filter((o) => {
+      if (status && o.status !== status) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        if (!o.title.toLowerCase().includes(q) && !(o.departmentName || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [openings, status, search]);
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -31,6 +57,37 @@ export default function JobOpenings() {
         <Button icon={Plus} onClick={() => setShowCreate(true)}>
           New Requisition
         </Button>
+      </div>
+
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div className="d-flex gap-2">
+          {STATUS_TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setStatus(t.key)}
+              className="btn btn-sm"
+              style={{
+                fontWeight: 600,
+                fontSize: 'var(--hz-text-sm)',
+                color: status === t.key ? '#fff' : 'var(--hz-text-secondary)',
+                background: status === t.key ? 'var(--hz-primary-600)' : 'var(--hz-gray-50)',
+                border: '1px solid ' + (status === t.key ? 'var(--hz-primary-600)' : 'var(--hz-border)'),
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="position-relative" style={{ width: 240 }}>
+          <Search size={14} className="position-absolute" style={{ left: 10, top: 9, color: 'var(--hz-text-muted)' }} />
+          <input
+            type="search"
+            placeholder="Search title or department…"
+            className="form-control form-control-sm ps-4"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {isError && <ErrorState description="Couldn't load job openings." onRetry={refetch} />}
@@ -52,8 +109,16 @@ export default function JobOpenings() {
             </div>
           )}
 
+          {!isLoading && openings?.length > 0 && filteredOpenings?.length === 0 && (
+            <div className="col-12">
+              <Card>
+                <EmptyState title="No matches" description="Try a different status or search term." />
+              </Card>
+            </div>
+          )}
+
           {!isLoading &&
-            openings?.map((o) => (
+            filteredOpenings?.map((o) => (
               <div className="col-12 col-md-6 col-xl-4" key={o.id}>
                 <Link to={`/recruitment/${o.id}`} className="text-decoration-none">
                   <Card hoverable>

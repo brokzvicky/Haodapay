@@ -64,7 +64,16 @@
   --hz-border-strong: var(--hz-gray-300);
   --hz-text-primary: var(--hz-gray-900);
   --hz-text-secondary: var(--hz-gray-500);
-  --hz-text-muted: var(--hz-gray-400);
+  /* --hz-gray-400 (#94a3b8) only clears 2.56:1 against white - a real
+     WCAG AA failure (needs 4.5:1 for normal text) that would otherwise
+     apply everywhere this token is used (timestamps, subtitles, empty-
+     state text - none of it large/bold enough to qualify for the 3:1
+     AA-large exception). There's no gray between this and gray-500 that
+     both passes AA and stays meaningfully distinct from --hz-text-
+     secondary (gray-500 itself only just clears AA at 4.76:1) - so this
+     intentionally lands close to secondary rather than picking an
+     arbitrary near-duplicate that still fails. */
+  --hz-text-muted: #6d7686;
   --hz-text-on-primary: #ffffff;
 
   /* ---- Typography ---- */
@@ -134,7 +143,12 @@
   --hz-border-strong: #2c3a4f;
   --hz-text-primary: #f1f5f9;
   --hz-text-secondary: #94a3b8;
-  --hz-text-muted: #64748b;
+  /* Same AA fix as the light-theme token above, recalculated against
+     this theme's dark background (#111827) rather than reused as-is -
+     this block is currently dormant (no data-theme toggle exists
+     anywhere in the app yet), but there's no reason to leave a known-
+     broken contrast value in scaffolding for whoever wires it up later. */
+  --hz-text-muted: #7f8ea3;
 
   --hz-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --hz-shadow-md: 0 4px 12px -3px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.3);

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { CalendarPlus, Check, X as XIcon, Calendar } from 'lucide-react';
+import { CalendarPlus, Check, X as XIcon, Calendar, Search } from 'lucide-react';
 import { leaveRequestsApi } from '../../api/endpoints/leave';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -21,6 +21,7 @@ const TABS = [
 
 export default function LeaveRequests() {
   const [tab, setTab] = useState('PENDING');
+  const [search, setSearch] = useState('');
   const [showApply, setShowApply] = useState(false);
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
@@ -38,6 +39,23 @@ export default function LeaveRequests() {
     queryKey: ['leave-requests', tab, isTeamScoped],
     queryFn: () => (isTeamScoped ? leaveRequestsApi.teamList(tab || undefined) : leaveRequestsApi.list(tab || undefined)),
   });
+
+  // Client-side, not a new backend query param: the endpoint already
+  // returns the full list for the selected status tab (no pagination
+  // exists here), so there's no extra request to make - just narrowing
+  // what's already in memory. "All Requests" with no way to find one
+  // employee's history was the real gap; this fixes that without
+  // needing a backend change.
+  const filteredRequests = useMemo(() => {
+    if (!requests || !search.trim()) return requests;
+    const q = search.trim().toLowerCase();
+    return requests.filter(
+      (r) =>
+        r.employeeName?.toLowerCase().includes(q) ||
+        r.leaveTypeName?.toLowerCase().includes(q) ||
+        r.departmentName?.toLowerCase().includes(q)
+    );
+  }, [requests, search]);
 
   const decide = useMutation({
     mutationFn: ({ id, approve }) => (approve ? leaveRequestsApi.approve(id) : leaveRequestsApi.reject(id)),
@@ -62,23 +80,35 @@ export default function LeaveRequests() {
         </Button>
       </div>
 
-      <div className="d-flex gap-2" style={{ borderBottom: '1px solid var(--hz-border)' }}>
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className="btn border-0 rounded-0 px-3 py-2"
-            style={{
-              fontSize: 'var(--hz-text-sm)',
-              fontWeight: 600,
-              color: tab === t.key ? 'var(--hz-primary-700)' : 'var(--hz-text-secondary)',
-              borderBottom: tab === t.key ? '2px solid var(--hz-primary-600)' : '2px solid transparent',
-              marginBottom: -1,
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ borderBottom: '1px solid var(--hz-border)' }}>
+        <div className="d-flex gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="btn border-0 rounded-0 px-3 py-2"
+              style={{
+                fontSize: 'var(--hz-text-sm)',
+                fontWeight: 600,
+                color: tab === t.key ? 'var(--hz-primary-700)' : 'var(--hz-text-secondary)',
+                borderBottom: tab === t.key ? '2px solid var(--hz-primary-600)' : '2px solid transparent',
+                marginBottom: -1,
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="position-relative mb-2" style={{ width: 240 }}>
+          <Search size={14} className="position-absolute" style={{ left: 10, top: 9, color: 'var(--hz-text-muted)' }} />
+          <input
+            type="search"
+            placeholder="Filter by name, type, dept…"
+            className="form-control form-control-sm ps-4"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       <Card bodyClassName="p-0">
@@ -90,12 +120,14 @@ export default function LeaveRequests() {
 
         {isError && <ErrorState description="Couldn't load leave requests." onRetry={refetch} />}
 
-        {!isLoading && !isError && requests?.length === 0 && (
+        {!isLoading && !isError && filteredRequests?.length === 0 && (
           <EmptyState
             icon={Calendar}
-            title={tab === 'PENDING' ? 'Nothing pending' : 'No leave requests yet'}
+            title={search ? 'No matches' : tab === 'PENDING' ? 'Nothing pending' : 'No leave requests yet'}
             description={
-              tab === 'PENDING'
+              search
+                ? `Nothing matches "${search}"`
+                : tab === 'PENDING'
                 ? isTeamScoped
                   ? 'None of your direct reports have pending requests.'
                   : 'New requests will show up here for approval.'
@@ -104,7 +136,7 @@ export default function LeaveRequests() {
           />
         )}
 
-        {!isLoading && !isError && requests?.length > 0 && (
+        {!isLoading && !isError && filteredRequests?.length > 0 && (
           <table className="table mb-0 align-middle">
             <thead>
               <tr style={{ fontSize: 'var(--hz-text-xs)', color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>
@@ -117,7 +149,7 @@ export default function LeaveRequests() {
               </tr>
             </thead>
             <tbody>
-              {requests.map((r) => {
+              {filteredRequests.map((r) => {
                 const meta = leaveStatusMeta(r.status);
                 return (
                   <tr key={r.id}>
