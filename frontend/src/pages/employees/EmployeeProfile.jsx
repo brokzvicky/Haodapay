@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, Users, ChevronDown, Fingerprint, Pencil, Check, X, CalendarDays, Clock } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, Users, ChevronDown, Fingerprint, Pencil, Check, X, CalendarDays, Clock, FileText, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { employeesApi } from '../../api/endpoints/employees';
 import { leaveRequestsApi } from '../../api/endpoints/leave';
 import { attendanceApi } from '../../api/endpoints/attendance';
+import { documentsApi, DOCUMENT_TYPE_LABEL } from '../../api/endpoints/documents';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import Button from '../../components/ui/Button';
+import Dialog from '../../components/ui/Dialog';
+import FormField from '../../components/ui/FormField';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
 import { SkeletonText } from '../../components/ui/Skeleton';
@@ -21,6 +24,7 @@ const TABS = [
   { key: 'hierarchy', label: 'Reporting Hierarchy' },
   { key: 'attendance', label: 'Attendance' },
   { key: 'leave', label: 'Leave' },
+  { key: 'documents', label: 'Documents' },
 ];
 
 export default function EmployeeProfile() {
@@ -148,6 +152,7 @@ export default function EmployeeProfile() {
       {tab === 'hierarchy' && <HierarchyTab employee={employee} />}
       {tab === 'attendance' && <AttendanceTab employee={employee} />}
       {tab === 'leave' && <LeaveTab employee={employee} />}
+      {tab === 'documents' && <DocumentsTab employee={employee} />}
     </div>
   );
 }
@@ -319,6 +324,171 @@ function AttendanceTab({ employee }) {
         </table>
       )}
     </Card>
+  );
+}
+
+function DocumentsTab({ employee }) {
+  const queryClient = useQueryClient();
+  const [showAdd, setShowAdd] = useState(false);
+
+  const { data: documents, isLoading, isError, refetch } = useQuery({
+    queryKey: ['employee-documents', String(employee.id)],
+    queryFn: () => documentsApi.byEmployee(employee.id),
+  });
+
+  const remove = useMutation({
+    mutationFn: documentsApi.remove,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employee-documents', String(employee.id)] }),
+  });
+
+  const today = new Date();
+  function daysUntil(dateStr) {
+    return Math.ceil((new Date(dateStr) - today) / 86400000);
+  }
+  function expiryTone(days) {
+    if (days < 0) return { color: 'var(--hz-danger-600)', label: 'Expired' };
+    if (days <= 30) return { color: 'var(--hz-warning-600)', label: `${days}d left` };
+    return { color: 'var(--hz-text-secondary)', label: null };
+  }
+
+  return (
+    <Card
+      title="Documents"
+      subtitle="ID proof, visas, certifications, and contracts on file"
+      actions={
+        <Button size="sm" variant="secondary" icon={Plus} onClick={() => setShowAdd(true)}>
+          Add Document
+        </Button>
+      }
+      bodyClassName="p-0"
+    >
+      {isLoading && (
+        <div className="p-4">
+          <SkeletonText lines={4} />
+        </div>
+      )}
+      {isError && <ErrorState description="Couldn't load documents." onRetry={refetch} />}
+      {!isLoading && !isError && documents?.length === 0 && (
+        <EmptyState icon={FileText} title="No documents on file" description="Add ID proof, visas, certifications, or contracts to track their expiry." />
+      )}
+      {!isLoading && !isError && documents?.length > 0 && (
+        <table className="table mb-0 align-middle">
+          <thead>
+            <tr style={{ fontSize: 'var(--hz-text-xs)', color: 'var(--hz-text-muted)', textTransform: 'uppercase' }}>
+              <th className="ps-4">Type</th>
+              <th>Number</th>
+              <th>Issued</th>
+              <th>Expires</th>
+              <th className="pe-4 text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((d) => {
+              const days = daysUntil(d.expiryDate);
+              const tone = expiryTone(days);
+              return (
+                <tr key={d.id}>
+                  <td className="ps-4" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600 }}>
+                    {DOCUMENT_TYPE_LABEL[d.documentType] || d.documentType}
+                  </td>
+                  <td style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>{d.documentNumber || '—'}</td>
+                  <td style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>
+                    {d.issueDate ? new Date(d.issueDate).toLocaleDateString() : '—'}
+                  </td>
+                  <td style={{ fontSize: 'var(--hz-text-sm)' }}>
+                    <span style={{ color: tone.color, fontWeight: tone.label ? 600 : 400 }}>
+                      {new Date(d.expiryDate).toLocaleDateString()}
+                      {tone.label && (
+                        <>
+                          {' '}
+                          <AlertTriangle size={12} style={{ marginBottom: 2 }} /> {tone.label}
+                        </>
+                      )}
+                    </span>
+                  </td>
+                  <td className="pe-4 text-end">
+                    <button
+                      className="btn btn-sm btn-light border-0"
+                      style={{ color: 'var(--hz-danger-600)' }}
+                      onClick={() => remove.mutate(d.id)}
+                      disabled={remove.isPending}
+                      aria-label={`Delete ${DOCUMENT_TYPE_LABEL[d.documentType] || d.documentType} record`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {showAdd && <AddDocumentModal employeeId={employee.id} onClose={() => setShowAdd(false)} />}
+    </Card>
+  );
+}
+
+function AddDocumentModal({ employeeId, onClose }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ documentType: 'ID_PROOF', documentNumber: '', issueDate: '', expiryDate: '', notes: '' });
+  const [error, setError] = useState(null);
+
+  const create = useMutation({
+    mutationFn: documentsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee-documents', String(employeeId)] });
+      onClose();
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Could not add this document.'),
+  });
+
+  function set(field, value) {
+    setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    create.mutate({ ...form, employeeId, issueDate: form.issueDate || null, notes: form.notes || null });
+  }
+
+  return (
+    <Dialog open onClose={onClose} title="Add Document" size="sm">
+      <form onSubmit={handleSubmit}>
+        {error && (
+          <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+
+        <FormField as="select" label="Document Type" required value={form.documentType} onChange={(v) => set('documentType', v)}>
+          {Object.entries(DOCUMENT_TYPE_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </FormField>
+
+        <FormField label="Document Number (optional)" value={form.documentNumber} onChange={(v) => set('documentNumber', v)} />
+
+        <div className="row g-3 mb-3">
+          <FormField col={6} label="Issue Date (optional)" type="date" value={form.issueDate} onChange={(v) => set('issueDate', v)} />
+          <FormField col={6} label="Expiry Date" type="date" required value={form.expiryDate} onChange={(v) => set('expiryDate', v)} />
+        </div>
+
+        <FormField as="textarea" label="Notes (optional)" rows={2} value={form.notes} onChange={(v) => set('notes', v)} />
+
+        <div className="d-flex justify-content-end gap-2 mt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={create.isPending}>
+            Add Document
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

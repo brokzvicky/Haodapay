@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, UserCheck, CalendarOff, FileClock, Inbox, Cake, Megaphone, Check, X } from 'lucide-react';
+import { Users, UserCheck, CalendarOff, FileClock, Inbox, Cake, Megaphone, Check, X, FileText, AlertTriangle } from 'lucide-react';
 import { dashboardApi } from '../api/endpoints/dashboard';
 import { leaveRequestsApi } from '../api/endpoints/leave';
+import { documentsApi, DOCUMENT_TYPE_LABEL } from '../api/endpoints/documents';
 import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
 import EmptyState from '../components/ui/EmptyState';
@@ -64,6 +65,21 @@ export default function Dashboard() {
   const approvalQueueLoading = isTeamScoped ? myTeamLoading : pendingLeaveLoading;
   const approvalQueueError = isTeamScoped ? myTeamError : pendingLeaveError;
   const refetchApprovalQueue = isTeamScoped ? refetchMyTeam : refetchPendingLeave;
+
+  // /api/documents/expiring-soon requires EMPLOYEE_MANAGE - skip the
+  // request entirely for roles that don't have it, same reasoning as the
+  // Approval Queue skipping its own query above.
+  const canViewExpiringDocs = hasPermission('EMPLOYEE_MANAGE');
+  const {
+    data: expiringDocs,
+    isLoading: expiringDocsLoading,
+    isError: expiringDocsError,
+    refetch: refetchExpiringDocs,
+  } = useQuery({
+    queryKey: ['documents-expiring-soon'],
+    queryFn: () => documentsApi.expiringSoon(30),
+    enabled: canViewExpiringDocs,
+  });
 
   const decideLeave = useMutation({
     mutationFn: ({ id, approve }) => (approve ? leaveRequestsApi.approve(id) : leaveRequestsApi.reject(id)),
@@ -403,6 +419,43 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {canViewExpiringDocs && (
+        <div className="row g-3">
+          <div className="col-12">
+            <Card hoverable title="Documents Expiring Soon" subtitle="Next 30 days">
+              {expiringDocsLoading && <SkeletonText lines={2} />}
+              {expiringDocsError && <ErrorState description="Couldn't load expiring documents." onRetry={refetchExpiringDocs} />}
+              {!expiringDocsLoading && !expiringDocsError && (!expiringDocs || expiringDocs.length === 0) && (
+                <EmptyState icon={FileText} title="Nothing expiring soon" description="ID proof, visas, certifications, and contracts nearing expiry will show up here." />
+              )}
+              {!expiringDocsLoading && !expiringDocsError && expiringDocs?.length > 0 && (
+                <div className="d-flex flex-column gap-2">
+                  {expiringDocs.map((d) => {
+                    const days = Math.ceil((new Date(d.expiryDate) - new Date()) / 86400000);
+                    return (
+                      <Link
+                        key={d.id}
+                        to={`/employees/${d.employeeId}?tab=documents`}
+                        className="d-flex align-items-center justify-content-between text-decoration-none p-2 rounded-3 hz-joiner-row"
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <AlertTriangle size={15} color={days < 0 ? 'var(--hz-danger-600)' : 'var(--hz-warning-600)'} />
+                          <span style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, color: 'var(--hz-text-primary)' }}>{d.employeeName}</span>
+                          <span style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>{DOCUMENT_TYPE_LABEL[d.documentType] || d.documentType}</span>
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: days < 0 ? 'var(--hz-danger-600)' : 'var(--hz-warning-600)' }}>
+                          {days < 0 ? 'Expired' : `${days}d left`}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
       </>
       )}
     </div>
