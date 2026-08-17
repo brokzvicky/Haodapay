@@ -54,7 +54,7 @@ export const NAV_SECTIONS = [
       { to: '/recruitment', icon: Briefcase, label: 'Recruitment', permission: 'RECRUITMENT_VIEW' },
       { to: '/my-recruitment', icon: UserCheck, label: 'My Recruiting', permission: 'RECRUITMENT_MANAGE' },
       { to: '/my-interviews', icon: CalendarClock, label: 'My Interviews' },
-      { to: '/performance', icon: TrendingUp, label: 'Performance', permission: 'PERFORMANCE_VIEW' },
+      { to: '/performance', icon: TrendingUp, label: 'Performance' },
     ],
   },
   {

@@ -566,6 +566,11 @@
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 260px);
+  transition: background var(--hz-transition-fast), border-color var(--hz-transition-fast);
+}
+.hz-kanban-col--drag-over {
+  background: var(--hz-primary-50);
+  border-color: var(--hz-primary-300);
 }
 .hz-kanban-col-header {
   display: flex;

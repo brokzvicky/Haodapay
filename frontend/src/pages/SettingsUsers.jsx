@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, ShieldCheck } from 'lucide-react';
 import { usersApi } from '../api/endpoints/users';
+import { rolesApi } from '../api/endpoints/roles';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -11,9 +12,11 @@ import FormField from '../components/ui/FormField';
 import { SkeletonText } from '../components/ui/Skeleton';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
+import { useToast } from '../components/ui/Toast';
 
 export default function SettingsUsers() {
   const [showCreate, setShowCreate] = useState(false);
+  const [editingRolesFor, setEditingRolesFor] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: users, isLoading, isError, refetch } = useQuery({
@@ -94,14 +97,24 @@ export default function SettingsUsers() {
                     {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never'}
                   </td>
                   <td className="text-end pe-4">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={toggleActive.isPending && toggleActive.variables?.id === u.id}
-                      onClick={() => toggleActive.mutate({ id: u.id, active: u.active })}
-                    >
-                      {u.active ? 'Deactivate' : 'Activate'}
-                    </Button>
+                    <div className="d-flex justify-content-end gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={ShieldCheck}
+                        onClick={() => setEditingRolesFor(u)}
+                      >
+                        Edit Roles
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={toggleActive.isPending && toggleActive.variables?.id === u.id}
+                        onClick={() => toggleActive.mutate({ id: u.id, active: u.active })}
+                      >
+                        {u.active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -111,7 +124,99 @@ export default function SettingsUsers() {
       </Card>
 
       {showCreate && <CreateUserModal onClose={() => setShowCreate(false)} />}
+      {editingRolesFor && (
+        <EditRolesModal
+          user={editingRolesFor}
+          onClose={() => setEditingRolesFor(null)}
+          otherSuperAdminCount={(users || []).filter((u) => u.id !== editingRolesFor.id && u.active && u.roles.includes('SUPER_ADMIN')).length}
+        />
+      )}
     </div>
+  );
+}
+
+function EditRolesModal({ user, onClose, otherSuperAdminCount }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [selected, setSelected] = useState(() => new Set(user.roles));
+
+  const { data: roles, isLoading, isError } = useQuery({ queryKey: ['roles'], queryFn: rolesApi.list });
+
+  // No backend guard exists against this (UserService#assignRoles is an
+  // unconditional overwrite) - without this check, removing SUPER_ADMIN
+  // from the last account that has it locks every admin screen in the
+  // app with no recovery path except direct database access. Computed
+  // from the already-loaded user list on the parent page rather than a
+  // new endpoint, since it's just a count over data that's already there.
+  const wouldRemoveLastSuperAdmin = user.roles.includes('SUPER_ADMIN') && !selected.has('SUPER_ADMIN') && otherSuperAdminCount === 0;
+
+  const save = useMutation({
+    mutationFn: () => usersApi.assignRoles(user.id, Array.from(selected)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success(`Updated roles for ${user.fullName}`);
+      onClose();
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Could not update roles.'),
+  });
+
+  function toggle(name) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  return (
+    <Dialog open onClose={onClose} title="Edit Roles" description={user.fullName} size="sm">
+      {isLoading && <SkeletonText lines={4} />}
+      {isError && <ErrorState description="Couldn't load roles." />}
+      {!isLoading && !isError && (
+        <>
+          <div className="d-flex flex-column gap-2 mb-3">
+            {roles?.map((r) => (
+              <label
+                key={r.id}
+                className="d-flex align-items-start gap-2 p-2 rounded-3"
+                style={{ border: '1px solid var(--hz-border)', cursor: 'pointer' }}
+              >
+                <input type="checkbox" className="form-check-input mt-1" checked={selected.has(r.name)} onChange={() => toggle(r.name)} />
+                <span>
+                  <span className="d-block" style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600 }}>
+                    {r.name}
+                  </span>
+                  {r.description && (
+                    <span className="d-block" style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
+                      {r.description}
+                    </span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+          {wouldRemoveLastSuperAdmin && (
+            <p style={{ fontSize: 12, color: 'var(--hz-danger-600)', fontWeight: 600 }}>
+              {user.fullName} is the only remaining Super Admin. Removing this role would leave no one able to manage users, roles, or settings - assign Super Admin to someone else first.
+            </p>
+          )}
+          {!wouldRemoveLastSuperAdmin && selected.size === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--hz-warning-600)' }}>
+              This user will have no roles at all - they'll be able to log in but won't be able to do anything until a role is assigned.
+            </p>
+          )}
+          <div className="d-flex justify-content-end gap-2 mt-2">
+            <Button variant="secondary" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={() => save.mutate()} loading={save.isPending} disabled={wouldRemoveLastSuperAdmin}>
+              Save Roles
+            </Button>
+          </div>
+        </>
+      )}
+    </Dialog>
   );
 }
 

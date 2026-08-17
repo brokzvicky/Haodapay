@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonText } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/Toast';
 
 const TABS = [
   { key: 'departments', label: 'Departments' },
@@ -54,6 +55,7 @@ export default function SettingsOrganization() {
 
 function DepartmentsPanel() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', code: '', description: '' });
 
@@ -65,6 +67,12 @@ function DepartmentsPanel() {
       setForm({ name: '', code: '', description: '' });
       setShowForm(false);
     },
+  });
+
+  const toggleActive = useMutation({
+    mutationFn: ({ id, active }) => (active ? departmentsApi.deactivate(id) : departmentsApi.activate(id)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['departments'] }),
+    onError: (err) => toast.error(err.response?.data?.message || 'Could not update this department.'),
   });
 
   return (
@@ -101,7 +109,15 @@ function DepartmentsPanel() {
       {!isLoading && departments?.length === 0 && <EmptyState title="No departments yet" description="Add your first department above." />}
       {!isLoading &&
         departments?.map((d) => (
-          <Row key={d.id} left={d.name} sub={d.code} right={`${d.employeeCount} employee${d.employeeCount === 1 ? '' : 's'}`} active={d.active} />
+          <Row
+            key={d.id}
+            left={d.name}
+            sub={d.code}
+            right={`${d.employeeCount} employee${d.employeeCount === 1 ? '' : 's'}`}
+            active={d.active}
+            onToggleActive={() => toggleActive.mutate({ id: d.id, active: d.active })}
+            toggling={toggleActive.isPending}
+          />
         ))}
     </Panel>
   );
@@ -246,7 +262,7 @@ function Panel({ title, showForm, onToggleForm, form, children }) {
   );
 }
 
-function Row({ left, sub, right, active }) {
+function Row({ left, sub, right, active, onToggleActive, toggling }) {
   return (
     <div className="d-flex align-items-center justify-content-between py-2" style={{ borderBottom: '1px solid var(--hz-border)' }}>
       <div>
@@ -256,6 +272,17 @@ function Row({ left, sub, right, active }) {
       <div className="d-flex align-items-center gap-2">
         <span style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)' }}>{right}</span>
         {!active && <Badge variant="neutral">Inactive</Badge>}
+        {onToggleActive && (
+          <button
+            type="button"
+            className="btn btn-sm btn-light border-0"
+            onClick={onToggleActive}
+            disabled={toggling}
+            style={{ fontSize: 12, color: active ? 'var(--hz-danger-600)' : 'var(--hz-success-600)' }}
+          >
+            {active ? 'Deactivate' : 'Activate'}
+          </button>
+        )}
       </div>
     </div>
   );

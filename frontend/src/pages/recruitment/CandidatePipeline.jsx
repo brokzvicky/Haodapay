@@ -11,6 +11,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import Dialog from '../../components/ui/Dialog';
 import FormField from '../../components/ui/FormField';
 import { SkeletonText } from '../../components/ui/Skeleton';
+import { useToast } from '../../components/ui/Toast';
 import CandidateDetailModal from './CandidateDetailModal';
 import { useBreadcrumbLabel } from '../../components/layout/BreadcrumbContext';
 
@@ -33,10 +34,62 @@ const STAGE_ACCENT = {
   HIRED: 'var(--hz-success-500)', REJECTED: 'var(--hz-danger-500)',
 };
 
+/**
+ * Dragging a card onto a column is only safe to complete directly when
+ * the backend transition needs nothing beyond the target stage/decision -
+ * everything here mirrors what AdvanceCandidateModal/ReviewCandidateModal
+ * already send with their optional fields omitted (see those files).
+ * Manager-round assignment (needs a hiring manager + schedule + Meet
+ * link) and offer generation (needs an amount + joining date) are
+ * genuinely not droppable this way - those return null here, and the
+ * drop just opens the existing detail modal instead of doing nothing or
+ * guessing at required fields, so the transition is still reachable via
+ * the same form as a click.
+ *
+ * Kept as a pure function (stage in, action out) so the actual drop
+ * handler stays a thin dispatcher - easier to audit than embedding this
+ * matrix inline in JSX.
+ */
+function resolveDragAction(fromStage, toStage) {
+  if (fromStage === toStage) return null;
+
+  if (fromStage === 'APPLIED' && ['SHORTLISTED', 'HOLD', 'REJECTED'].includes(toStage)) {
+    return { type: 'review', decision: toStage };
+  }
+  if (fromStage === 'SHORTLISTED' && ['ROUND1', 'HOLD', 'REJECTED'].includes(toStage)) {
+    return { type: 'advance', targetStage: toStage };
+  }
+  if (fromStage === 'HOLD' && ['SHORTLISTED', 'ROUND1', 'ROUND2', 'ROUND3', 'REJECTED'].includes(toStage)) {
+    return { type: 'advance', targetStage: toStage };
+  }
+  if (fromStage === 'ROUND1' && ['HOLD', 'REJECTED'].includes(toStage)) {
+    return { type: 'advance', targetStage: toStage };
+  }
+  if (fromStage === 'ROUND2' && ['ROUND3', 'HOLD', 'REJECTED'].includes(toStage)) {
+    return { type: 'advance', targetStage: toStage };
+  }
+  if (fromStage === 'ROUND3' && ['HOLD', 'REJECTED'].includes(toStage)) {
+    return { type: 'advance', targetStage: toStage };
+  }
+  if (fromStage === 'OFFER_LETTER_SENT' && toStage === 'HIRED') {
+    return { type: 'acceptOffer' };
+  }
+
+  // ROUND1->ROUND2 (needs AssignManagerModal), ROUND3->OFFERED (needs
+  // GenerateOfferModal), anything into OFFERED/OFFER_LETTER_SENT besides
+  // the above, and any other combination not listed - all fall through
+  // to opening the detail modal rather than being silently ignored.
+  return null;
+}
+
 export default function CandidatePipeline() {
   const { jobOpeningId } = useParams();
   const [showAddCandidate, setShowAddCandidate] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
+  const [dragCandidate, setDragCandidate] = useState(null); // { id, stage } of the card currently being dragged
+  const [dragOverStage, setDragOverStage] = useState(null); // column currently highlighted as a drop target
+  const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: openings } = useQuery({ queryKey: ['job-openings'], queryFn: jobOpeningsApi.list });
   const opening = openings?.find((o) => String(o.id) === jobOpeningId);
@@ -55,6 +108,39 @@ export default function CandidatePipeline() {
     });
     return byStage;
   }, [candidates]);
+
+  const applyDrag = useMutation({
+    mutationFn: ({ candidateId, action }) => {
+      if (action.type === 'review') return candidatesApi.review(candidateId, { decision: action.decision });
+      if (action.type === 'advance') return candidatesApi.advance(candidateId, { targetStage: action.targetStage });
+      if (action.type === 'acceptOffer') return candidatesApi.acceptOffer(candidateId);
+      return Promise.reject(new Error('Unknown drag action'));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates', jobOpeningId] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Couldn't move this candidate.");
+    },
+  });
+
+  function handleDrop(toStage) {
+    setDragOverStage(null);
+    if (!dragCandidate) return;
+    const { id: candidateId, stage: fromStage } = dragCandidate;
+    setDragCandidate(null);
+
+    const action = resolveDragAction(fromStage, toStage);
+    if (!action) {
+      // Not a safe bare transition (needs a form, e.g. assigning a
+      // manager round or generating an offer) - open the same detail
+      // modal a click would, rather than silently doing nothing or
+      // guessing at required fields.
+      if (fromStage !== toStage) setSelectedCandidateId(candidateId);
+      return;
+    }
+    applyDrag.mutate({ candidateId, action });
+  }
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -98,7 +184,20 @@ export default function CandidatePipeline() {
       {!isLoading && !isError && candidates?.length > 0 && (
         <div className="hz-kanban-board">
           {STAGE_COLUMNS.map((stage) => (
-            <div key={stage} className="hz-kanban-col">
+            <div
+              key={stage}
+              className={`hz-kanban-col ${dragOverStage === stage ? 'hz-kanban-col--drag-over' : ''}`}
+              onDragOver={(e) => {
+                if (!dragCandidate) return;
+                e.preventDefault(); // required for onDrop to fire at all
+                if (dragOverStage !== stage) setDragOverStage(stage);
+              }}
+              onDragLeave={() => setDragOverStage((s) => (s === stage ? null : s))}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(stage);
+              }}
+            >
               <div className="hz-kanban-col-header">
                 <span className="hz-kanban-col-dot" style={{ background: STAGE_ACCENT[stage] }} />
                 <span className="hz-kanban-col-title">{STAGE_LABEL[stage]}</span>
@@ -109,6 +208,15 @@ export default function CandidatePipeline() {
                   <button
                     key={c.id}
                     type="button"
+                    draggable
+                    onDragStart={(e) => {
+                      setDragCandidate({ id: c.id, stage: c.stage });
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragEnd={() => {
+                      setDragCandidate(null);
+                      setDragOverStage(null);
+                    }}
                     onClick={() => setSelectedCandidateId(c.id)}
                     className="hz-kanban-card"
                   >
