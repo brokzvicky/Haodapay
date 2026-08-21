@@ -28,10 +28,10 @@ public class UserDTO {
         dto.active = user.isActive();
         dto.mustChangePassword = user.isMustChangePassword();
         dto.lastLoginAt = user.getLastLoginAt();
-        dto.roles = user.getRoles().stream().map(com.haodaone.user.entity.Role::getName).toList();
-        //git user without SALARY_VIEW), rather than checking
-        // role names directly, since custom roles (via Settings > Roles)
-        // won't be named "HR_ADMIN" but can still carry the same permission.
+        dto.roles = user.getRoles().stream()
+                .map(com.haodaone.user.entity.Role::getName)
+                .collect(Collectors.toList());
+
         dto.permissions = user.getRoles().stream()
                 .flatMap(role -> role.getPermissions().stream())
                 .map(com.haodaone.user.entity.Permission::getCode)
