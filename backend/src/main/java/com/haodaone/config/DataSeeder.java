@@ -71,7 +71,7 @@ public class DataSeeder implements CommandLineRunner {
                         "ATTENDANCE_VIEW", "ATTENDANCE_MANAGE", "DEVICE_MANAGE",
                         "LEAVE_APPLY", "LEAVE_VIEW", "LEAVE_APPROVE", "LEAVE_MANAGE",
                         "RECRUITMENT_VIEW", "RECRUITMENT_MANAGE", "PERFORMANCE_VIEW", "PERFORMANCE_MANAGE",
-                        "SALARY_VIEW", "SALARY_MANAGE", "REPORTS_VIEW"));
+                        "SALARY_VIEW", "SALARY_MANAGE", "REPORTS_VIEW", "MONITORING_VIEW"));
         seedRole("MANAGER", "Team lead - visibility into their reports, leave approval, and performance management for their team",
                 permissionsByCode("EMPLOYEE_VIEW", "ORG_VIEW", "ATTENDANCE_VIEW", "LEAVE_APPLY", "LEAVE_VIEW", "LEAVE_APPROVE",
                         "RECRUITMENT_VIEW", "INTERVIEW_DECISION", "PERFORMANCE_VIEW", "PERFORMANCE_MANAGE", "REPORTS_VIEW"));
@@ -127,7 +127,9 @@ public class DataSeeder implements CommandLineRunner {
                 new String[]{"PERFORMANCE_MANAGE", "Set goals and conduct performance reviews", "Performance"},
                 new String[]{"SALARY_VIEW", "View salary structures, employee salary details, payroll runs, and the payroll dashboard", "Payroll"},
                 new String[]{"SALARY_MANAGE", "Define salary structures and create, process, or cancel payroll runs", "Payroll"},
-                new String[]{"REPORTS_VIEW", "View executive, attendance, leave, and recruitment reports", "Reports"}
+                new String[]{"REPORTS_VIEW", "View executive, attendance, leave, and recruitment reports", "Reports"},
+                new String[]{"MONITORING_VIEW", "View monitored devices and employee activity sessions", "Monitoring"},
+                new String[]{"MONITORING_MANAGE", "Enroll/decommission monitored devices, rotate agent tokens, and push directives", "Monitoring"}
         );
 
         for (String[] p : permissions) {

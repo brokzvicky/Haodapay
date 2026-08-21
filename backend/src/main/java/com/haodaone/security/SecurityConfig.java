@@ -40,13 +40,17 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AgentTokenAuthenticationFilter agentTokenAuthenticationFilter;
     private final ObjectMapper objectMapper;
 
     @Value("${app.cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                           AgentTokenAuthenticationFilter agentTokenAuthenticationFilter,
+                           ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.agentTokenAuthenticationFilter = agentTokenAuthenticationFilter;
         this.objectMapper = objectMapper;
     }
 
@@ -85,7 +89,11 @@ public class SecurityConfig {
                                 response, HttpStatus.UNAUTHORIZED, "Authentication required", request.getRequestURI()))
                         .accessDeniedHandler((request, response, ex) -> writeJsonError(
                                 response, HttpStatus.FORBIDDEN, "You don't have permission to perform this action", request.getRequestURI())))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Scoped internally to /api/agent/** (see AgentTokenAuthenticationFilter#shouldNotFilter) -
+                // runs before JwtAuthenticationFilter so a matched device's SecurityContext is already
+                // populated by the time JwtAuthenticationFilter's own "context still empty" check runs.
+                .addFilterBefore(agentTokenAuthenticationFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

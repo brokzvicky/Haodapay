@@ -1,0 +1,141 @@
+package com.haodaone.monitoring.service;
+
+import com.haodaone.audit.service.AuditLogService;
+import com.haodaone.common.exception.BadRequestException;
+import com.haodaone.common.exception.ResourceNotFoundException;
+import com.haodaone.employee.entity.Employee;
+import com.haodaone.employee.repository.EmployeeRepository;
+import com.haodaone.monitoring.dto.MonitoredDeviceDTO;
+import com.haodaone.monitoring.entity.MonitoredDevice;
+import com.haodaone.monitoring.repository.MonitoredDeviceRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.List;
+
+/**
+ * Admin-side device lifecycle: enroll (mint a token before the agent is
+ * ever installed), list/inspect, pause/resume monitoring, decommission.
+ * Token generation and hashing follow the exact pattern AuthService uses
+ * for refresh tokens - SHA-256 of a SecureRandom value, raw value returned
+ * to the caller exactly once and never stored.
+ */
+@Service
+public class DeviceEnrollmentService {
+
+    private final MonitoredDeviceRepository deviceRepository;
+    private final EmployeeRepository employeeRepository;
+    private final AuditLogService auditLogService;
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    public DeviceEnrollmentService(MonitoredDeviceRepository deviceRepository, EmployeeRepository employeeRepository,
+                                    AuditLogService auditLogService) {
+        this.deviceRepository = deviceRepository;
+        this.employeeRepository = employeeRepository;
+        this.auditLogService = auditLogService;
+    }
+
+    public List<MonitoredDeviceDTO> listAll() {
+        return deviceRepository.findAllByDeletedFalseOrderByDeviceNameAsc().stream()
+                .map(MonitoredDeviceDTO::from)
+                .toList();
+    }
+
+    public MonitoredDeviceDTO get(Long id) {
+        return MonitoredDeviceDTO.from(findOrThrow(id));
+    }
+
+    /**
+     * Creates the device record and returns a one-time raw token. deviceId
+     * (the agent's hardware-derived identifier) is intentionally left null
+     * here - it's unknown until the agent's first heartbeat, at which point
+     * AgentIngestService#resolveDevice fills it in by matching the token.
+     */
+    @Transactional
+    public MonitoredDeviceDTO.EnrollResponse enroll(MonitoredDeviceDTO.EnrollRequest request) {
+        MonitoredDevice device = new MonitoredDevice();
+        device.setDeviceName(request.getDeviceName());
+        device.setDeviceId("PENDING-" + java.util.UUID.randomUUID());
+        device.setActive(true);
+
+        if (request.getEmployeeId() != null) {
+            Employee employee = employeeRepository.findById(request.getEmployeeId())
+                    .orElseThrow(() -> new BadRequestException("Unknown employee: " + request.getEmployeeId()));
+            device.setEmployee(employee);
+        }
+
+        String rawToken = generateRawToken();
+        device.setAgentTokenHash(hash(rawToken));
+
+        MonitoredDevice saved = deviceRepository.save(device);
+        auditLogService.log("MonitoredDevice", saved.getId(), "CREATE",
+                "Enrolled device '" + saved.getDeviceName() + "' pending first agent check-in");
+
+        return new MonitoredDeviceDTO.EnrollResponse(MonitoredDeviceDTO.from(saved), rawToken);
+    }
+
+    @Transactional
+    public void setActive(Long id, boolean active) {
+        MonitoredDevice device = findOrThrow(id);
+        device.setActive(active);
+        deviceRepository.save(device);
+        auditLogService.log("MonitoredDevice", id, active ? "ACTIVATE" : "DEACTIVATE", "active: " + active);
+    }
+
+    @Transactional
+    public MonitoredDeviceDTO applyDirective(Long id, MonitoredDeviceDTO.DirectiveRequest request) {
+        MonitoredDevice device = findOrThrow(id);
+        if (request.getHeartbeatIntervalSeconds() != null) {
+            device.setHeartbeatIntervalSeconds(request.getHeartbeatIntervalSeconds());
+        }
+        if (request.getMonitoringPaused() != null) {
+            device.setMonitoringPaused(request.getMonitoringPaused());
+        }
+        MonitoredDevice saved = deviceRepository.save(device);
+        auditLogService.log("MonitoredDevice", id, "UPDATE",
+                "Directive applied: intervalSeconds=" + device.getHeartbeatIntervalSeconds()
+                        + ", paused=" + device.isMonitoringPaused());
+        return MonitoredDeviceDTO.from(saved);
+    }
+
+    /**
+     * Rotates the token for a device already in the field - the admin must
+     * re-run provision-config.ps1 (or reinstall) with the new token before
+     * the agent can authenticate again.
+     */
+    @Transactional
+    public MonitoredDeviceDTO.EnrollResponse rotateToken(Long id) {
+        MonitoredDevice device = findOrThrow(id);
+        String rawToken = generateRawToken();
+        device.setAgentTokenHash(hash(rawToken));
+        MonitoredDevice saved = deviceRepository.save(device);
+        auditLogService.log("MonitoredDevice", id, "UPDATE", "Agent token rotated");
+        return new MonitoredDeviceDTO.EnrollResponse(MonitoredDeviceDTO.from(saved), rawToken);
+    }
+
+    private MonitoredDevice findOrThrow(Long id) {
+        return deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Monitored device not found: " + id));
+    }
+
+    private String generateRawToken() {
+        byte[] bytes = new byte[32];
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /** Same SHA-256-of-a-high-entropy-token approach as AuthService#hash for refresh tokens - not a password, no need for slow/salted hashing. */
+    private String hash(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+}
