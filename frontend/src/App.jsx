@@ -27,6 +27,10 @@ import SalaryStructurePage from './pages/salary/SalaryStructurePage';
 import PayrollProcessing from './pages/salary/PayrollProcessing';
 import SalaryDetails from './pages/salary/SalaryDetails';
 import SalaryReports from './pages/salary/SalaryReports';
+import MonitoringDashboard from './pages/monitoring/MonitoringDashboard';
+import MonitoringDevices from './pages/monitoring/Devices';
+import MonitoringDeviceDetails from './pages/monitoring/DeviceDetails';
+import MonitoringActivity from './pages/monitoring/Activity';
 import SettingsUsers from './pages/SettingsUsers';
 import SettingsOrganization from './pages/SettingsOrganization';
 import SettingsLeave from './pages/SettingsLeave';
@@ -59,6 +63,10 @@ export default function App() {
           <Route path="my-recruitment" element={<RecruiterDashboard />} />
           <Route path="my-interviews" element={<MyInterviews />} />
           <Route path="performance" element={<PerformanceHub />} />
+          <Route path="monitoring" element={<MonitoringDashboard />} />
+          <Route path="monitoring/devices" element={<MonitoringDevices />} />
+          <Route path="monitoring/devices/:id" element={<MonitoringDeviceDetails />} />
+          <Route path="monitoring/activity" element={<MonitoringActivity />} />
           <Route path="salary" element={<SalaryDashboard />} />
           <Route path="salary/employees" element={<EmployeeSalaryList />} />
           <Route path="salary/employees/:employeeId" element={<SalaryDetails />} />

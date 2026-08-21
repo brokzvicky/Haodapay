@@ -18,6 +18,7 @@ import {
   Presentation,
   UserCheck,
   Receipt,
+  MonitorSmartphone,
 } from 'lucide-react';
 
 /**
@@ -55,6 +56,16 @@ export const NAV_SECTIONS = [
       { to: '/my-recruitment', icon: UserCheck, label: 'My Recruiting', permission: 'RECRUITMENT_MANAGE' },
       { to: '/my-interviews', icon: CalendarClock, label: 'My Interviews' },
       { to: '/performance', icon: TrendingUp, label: 'Performance' },
+    ],
+  },
+  {
+    id: 'monitoring',
+    label: 'Monitoring',
+    collapsible: true,
+    items: [
+      { to: '/monitoring', icon: MonitorSmartphone, label: 'Dashboard', end: true },
+      { to: '/monitoring/devices', icon: MonitorSmartphone, label: 'Devices' },
+      { to: '/monitoring/activity', icon: Clock, label: 'Activity' },
     ],
   },
   {
