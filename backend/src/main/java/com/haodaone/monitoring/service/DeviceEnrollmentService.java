@@ -61,6 +61,10 @@ public class DeviceEnrollmentService {
         device.setDeviceName(request.getDeviceName());
         device.setDeviceId("PENDING-" + java.util.UUID.randomUUID());
         device.setActive(true);
+        device.setHostname(request.getHostname());
+        device.setSerialNumber(request.getSerialNumber());
+        device.setMacAddress(request.getMacAddress());
+        device.setAssignedDate(request.getAssignedDate() != null ? request.getAssignedDate() : java.time.LocalDate.now());
 
         if (request.getEmployeeId() != null) {
             Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -76,6 +80,46 @@ public class DeviceEnrollmentService {
                 "Enrolled device '" + saved.getDeviceName() + "' pending first agent check-in");
 
         return new MonitoredDeviceDTO.EnrollResponse(MonitoredDeviceDTO.from(saved), rawToken);
+    }
+
+    /**
+     * Device Assignment module's edit action: (re)assign to an employee
+     * and/or update hostname/serial/MAC/assigned date/active status in one
+     * call. Unlike enroll(), never touches the agent token.
+     */
+    @Transactional
+    public MonitoredDeviceDTO updateAssignment(Long id, MonitoredDeviceDTO.AssignmentRequest request) {
+        MonitoredDevice device = findOrThrow(id);
+
+        if (request.getEmployeeId() != null) {
+            Employee employee = employeeRepository.findById(request.getEmployeeId())
+                    .orElseThrow(() -> new BadRequestException("Unknown employee: " + request.getEmployeeId()));
+            device.setEmployee(employee);
+            if (device.getAssignedDate() == null) {
+                device.setAssignedDate(java.time.LocalDate.now());
+            }
+        }
+        if (request.getHostname() != null) {
+            device.setHostname(request.getHostname());
+        }
+        if (request.getSerialNumber() != null) {
+            device.setSerialNumber(request.getSerialNumber());
+        }
+        if (request.getMacAddress() != null) {
+            device.setMacAddress(request.getMacAddress());
+        }
+        if (request.getAssignedDate() != null) {
+            device.setAssignedDate(request.getAssignedDate());
+        }
+        if (request.getActive() != null) {
+            device.setActive(request.getActive());
+        }
+
+        MonitoredDevice saved = deviceRepository.save(device);
+        auditLogService.log("MonitoredDevice", id, "UPDATE",
+                "Device assignment updated: employeeId=" + (device.getEmployee() != null ? device.getEmployee().getId() : null)
+                        + ", active=" + device.isActive());
+        return MonitoredDeviceDTO.from(saved);
     }
 
     @Transactional

@@ -43,6 +43,22 @@ public class MonitoredDevice extends BaseEntity {
     @Column(name = "mac_address", length = 50)
     private String macAddress;
 
+    /** Windows hostname reported by the agent/admin - distinct from deviceName (an admin-chosen label) since the two can legitimately differ. */
+    @Column(name = "hostname", length = 150)
+    private String hostname;
+
+    /** Hardware serial number, entered at assignment time or reported by the agent if it can read it - required by the Device Assignment module. */
+    @Column(name = "serial_number", length = 150)
+    private String serialNumber;
+
+    /** Date this device was assigned to its current employee - set on enroll/assign, not touched by heartbeats. */
+    @Column(name = "assigned_date")
+    private java.time.LocalDate assignedDate;
+
+    /** Agent-generated stable per-install GUID (HaodaOne.Agent's MachineGuidProvider) - sent on every heartbeat/activity batch, used as a secondary identity check alongside deviceId. */
+    @Column(name = "machine_guid", length = 100)
+    private String machineGuid;
+
     @Column(name = "operating_system", length = 100)
     private String operatingSystem;
 
@@ -135,6 +151,38 @@ public class MonitoredDevice extends BaseEntity {
 
     public void setMacAddress(String macAddress) {
         this.macAddress = macAddress;
+    }
+
+    public String getHostname() {
+        return hostname;
+    }
+
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
+    }
+
+    public String getSerialNumber() {
+        return serialNumber;
+    }
+
+    public void setSerialNumber(String serialNumber) {
+        this.serialNumber = serialNumber;
+    }
+
+    public java.time.LocalDate getAssignedDate() {
+        return assignedDate;
+    }
+
+    public void setAssignedDate(java.time.LocalDate assignedDate) {
+        this.assignedDate = assignedDate;
+    }
+
+    public String getMachineGuid() {
+        return machineGuid;
+    }
+
+    public void setMachineGuid(String machineGuid) {
+        this.machineGuid = machineGuid;
     }
 
     public String getOperatingSystem() {

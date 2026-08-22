@@ -1,0 +1,64 @@
+package com.haodaone.monitoring.report.dto;
+
+import java.time.LocalDate;
+
+/** Every filter from requirement #7 (Report Filters), all optional except the date range. Built once per request by MonitoringReportController and passed through the service layer. */
+public class ReportFilter {
+
+    private final LocalDate startDate;
+    private final LocalDate endDate;
+    private final Long employeeId;
+    private final String employeeCode;
+    private final String employeeName;
+    private final Long departmentId;
+    private final Long deviceId;
+    private final String deviceName;
+
+    public ReportFilter(LocalDate startDate, LocalDate endDate, Long employeeId, String employeeCode,
+                         String employeeName, Long departmentId, Long deviceId, String deviceName) {
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.employeeId = employeeId;
+        this.employeeCode = blankToNull(employeeCode);
+        this.employeeName = blankToNull(employeeName);
+        this.departmentId = departmentId;
+        this.deviceId = deviceId;
+        this.deviceName = blankToNull(deviceName);
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public Long getEmployeeId() {
+        return employeeId;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public Long getDeviceId() {
+        return deviceId;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+}

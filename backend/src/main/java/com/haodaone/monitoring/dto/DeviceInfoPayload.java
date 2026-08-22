@@ -19,6 +19,24 @@ public class DeviceInfoPayload {
     private String agentVersion;
     private String macAddress;
 
+    /** Windows hostname - the agent's Environment.MachineName, sent separately from deviceName (an admin-chosen label). */
+    private String hostname;
+
+    /** Agent-generated stable per-install GUID (HaodaOne.Agent's MachineGuidProvider), see MonitoredDevice.machineGuid. */
+    private String machineGuid;
+
+    /**
+     * Employee ID (Employee.employeeCode, e.g. "HAODA-0042") the agent was
+     * configured with at install time - lets AgentIngestService resolve the
+     * employee directly instead of relying solely on windowsUsername
+     * matching User.username, which requires those two values to line up
+     * and doesn't hold for every machine/domain setup.
+     */
+    private String employeeId;
+
+    /** Sent for display/logging only - the backend never trusts this for identity resolution, employeeId (the code) is authoritative. */
+    private String employeeName;
+
     public String getDeviceId() {
         return deviceId;
     }
@@ -89,5 +107,37 @@ public class DeviceInfoPayload {
 
     public void setMacAddress(String macAddress) {
         this.macAddress = macAddress;
+    }
+
+    public String getHostname() {
+        return hostname;
+    }
+
+    public void setHostname(String hostname) {
+        this.hostname = hostname;
+    }
+
+    public String getMachineGuid() {
+        return machineGuid;
+    }
+
+    public void setMachineGuid(String machineGuid) {
+        this.machineGuid = machineGuid;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public void setEmployeeName(String employeeName) {
+        this.employeeName = employeeName;
     }
 }

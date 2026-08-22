@@ -89,8 +89,16 @@ public class AgentIngestService {
             session.setDurationSeconds(payload.getDurationSeconds());
             session.setIdleSession(payload.isIdleSession());
 
-            String username = payload.getUsername() != null ? payload.getUsername() : request.getDevice().getUsername();
-            resolveEmployee(username).ifPresent(session::setEmployee);
+            // Prefer the device's already-resolved employee (resolved via
+            // Employee ID in syncDeviceIdentity above); only fall back to a
+            // per-session username lookup if the device itself has no
+            // resolved employee yet.
+            if (device.getEmployee() != null) {
+                session.setEmployee(device.getEmployee());
+            } else {
+                String username = payload.getUsername() != null ? payload.getUsername() : request.getDevice().getUsername();
+                resolveEmployee(username).ifPresent(session::setEmployee);
+            }
 
             activitySessionRepository.save(session);
             accepted.add(payload.getSessionId());
@@ -124,17 +132,45 @@ public class AgentIngestService {
             device.setOperatingSystem(payload.getOperatingSystem());
             device.setOsVersion(payload.getOsVersion());
             device.setMacAddress(payload.getMacAddress());
+            if (payload.getHostname() != null && !payload.getHostname().isBlank()) {
+                device.setHostname(payload.getHostname());
+            }
+            if (payload.getMachineGuid() != null && !payload.getMachineGuid().isBlank()) {
+                device.setMachineGuid(payload.getMachineGuid());
+            }
             if (payload.getAgentVersion() != null) {
                 device.setAgentVersion(payload.getAgentVersion());
             }
             device.setIpAddress(payload.getIpAddress());
 
-            if (device.getEmployee() == null) {
-                resolveEmployee(payload.getUsername()).ifPresent(device::setEmployee);
+            // Employee ID (employeeCode) is authoritative when the agent sends
+            // one - re-resolved on every call so a re-assignment (device
+            // handed to a different employee, config re-provisioned) takes
+            // effect on the device's next check-in without an admin having to
+            // touch the record here. windowsUsername is only a fallback for
+            // agents that predate employeeId being configured.
+            java.util.Optional<com.haodaone.employee.entity.Employee> resolved = resolveEmployee(payload.getEmployeeId(), payload.getUsername());
+            if (resolved.isPresent()) {
+                device.setEmployee(resolved.get());
+            } else if (device.getEmployee() == null) {
+                log.debug("Could not resolve employee for device {} (employeeId={}, username={})",
+                        device.getDeviceId(), payload.getEmployeeId(), payload.getUsername());
             }
         }
         device.setLastIpAddress(remoteIp);
         return device;
+    }
+
+    /** Employee ID (employeeCode) first, windowsUsername as a fallback - see DeviceInfoPayload.employeeId javadoc. */
+    private java.util.Optional<com.haodaone.employee.entity.Employee> resolveEmployee(String employeeCode, String windowsUsername) {
+        if (employeeCode != null && !employeeCode.isBlank()) {
+            java.util.Optional<com.haodaone.employee.entity.Employee> byCode = employeeRepository.findByEmployeeCodeAndDeletedFalse(employeeCode.trim());
+            if (byCode.isPresent()) {
+                return byCode;
+            }
+            log.warn("Agent reported employeeId '{}' which does not match any active employee - falling back to windowsUsername", employeeCode);
+        }
+        return resolveEmployee(windowsUsername);
     }
 
     private java.util.Optional<com.haodaone.employee.entity.Employee> resolveEmployee(String windowsUsername) {

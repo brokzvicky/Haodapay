@@ -48,6 +48,12 @@ public class MonitoredDeviceController {
         return deviceEnrollmentService.rotateToken(id);
     }
 
+    @PutMapping("/{id}/assignment")
+    @PreAuthorize("hasAuthority('MONITORING_MANAGE')")
+    public MonitoredDeviceDTO updateAssignment(@PathVariable Long id, @RequestBody MonitoredDeviceDTO.AssignmentRequest request) {
+        return deviceEnrollmentService.updateAssignment(id, request);
+    }
+
     @PatchMapping("/{id}/directive")
     @PreAuthorize("hasAuthority('MONITORING_MANAGE')")
     public MonitoredDeviceDTO applyDirective(@PathVariable Long id, @RequestBody MonitoredDeviceDTO.DirectiveRequest request) {

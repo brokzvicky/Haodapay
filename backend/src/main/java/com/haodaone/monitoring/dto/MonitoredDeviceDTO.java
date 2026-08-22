@@ -3,6 +3,7 @@ package com.haodaone.monitoring.dto;
 import com.haodaone.monitoring.entity.MonitoredDevice;
 import jakarta.validation.constraints.NotBlank;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class MonitoredDeviceDTO {
@@ -13,11 +14,19 @@ public class MonitoredDeviceDTO {
     private String windowsUsername;
     private String domainName;
     private String ipAddress;
+    private String macAddress;
+    private String hostname;
+    private String serialNumber;
+    private LocalDate assignedDate;
+    private String machineGuid;
     private String operatingSystem;
     private String osVersion;
     private String agentVersion;
     private Long employeeId;
+    private String employeeCode;
     private String employeeName;
+    private String departmentName;
+    private String designationTitle;
     private String status;
     private String currentApplication;
     private String currentWindowTitle;
@@ -34,6 +43,11 @@ public class MonitoredDeviceDTO {
         dto.windowsUsername = d.getWindowsUsername();
         dto.domainName = d.getDomainName();
         dto.ipAddress = d.getIpAddress();
+        dto.macAddress = d.getMacAddress();
+        dto.hostname = d.getHostname();
+        dto.serialNumber = d.getSerialNumber();
+        dto.assignedDate = d.getAssignedDate();
+        dto.machineGuid = d.getMachineGuid();
         dto.operatingSystem = d.getOperatingSystem();
         dto.osVersion = d.getOsVersion();
         dto.agentVersion = d.getAgentVersion();
@@ -46,7 +60,10 @@ public class MonitoredDeviceDTO {
         dto.monitoringPaused = d.isMonitoringPaused();
         if (d.getEmployee() != null) {
             dto.employeeId = d.getEmployee().getId();
+            dto.employeeCode = d.getEmployee().getEmployeeCode();
             dto.employeeName = d.getEmployee().getFullName();
+            dto.departmentName = d.getEmployee().getDepartment() != null ? d.getEmployee().getDepartment().getName() : null;
+            dto.designationTitle = d.getEmployee().getDesignation() != null ? d.getEmployee().getDesignation().getTitle() : null;
         }
         return dto;
     }
@@ -73,6 +90,38 @@ public class MonitoredDeviceDTO {
 
     public String getIpAddress() {
         return ipAddress;
+    }
+
+    public String getMacAddress() {
+        return macAddress;
+    }
+
+    public String getHostname() {
+        return hostname;
+    }
+
+    public String getSerialNumber() {
+        return serialNumber;
+    }
+
+    public LocalDate getAssignedDate() {
+        return assignedDate;
+    }
+
+    public String getMachineGuid() {
+        return machineGuid;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public String getDesignationTitle() {
+        return designationTitle;
     }
 
     public String getOperatingSystem() {
@@ -129,6 +178,10 @@ public class MonitoredDeviceDTO {
         private String deviceName;
 
         private Long employeeId;
+        private String hostname;
+        private String serialNumber;
+        private String macAddress;
+        private LocalDate assignedDate;
 
         public String getDeviceName() {
             return deviceName;
@@ -144,6 +197,101 @@ public class MonitoredDeviceDTO {
 
         public void setEmployeeId(Long employeeId) {
             this.employeeId = employeeId;
+        }
+
+        public String getHostname() {
+            return hostname;
+        }
+
+        public void setHostname(String hostname) {
+            this.hostname = hostname;
+        }
+
+        public String getSerialNumber() {
+            return serialNumber;
+        }
+
+        public void setSerialNumber(String serialNumber) {
+            this.serialNumber = serialNumber;
+        }
+
+        public String getMacAddress() {
+            return macAddress;
+        }
+
+        public void setMacAddress(String macAddress) {
+            this.macAddress = macAddress;
+        }
+
+        public LocalDate getAssignedDate() {
+            return assignedDate;
+        }
+
+        public void setAssignedDate(LocalDate assignedDate) {
+            this.assignedDate = assignedDate;
+        }
+    }
+
+    /**
+     * Admin request to (re)assign an already-enrolled device to an employee,
+     * or edit its Device Assignment fields (hostname/serial/MAC/assigned
+     * date/active status) - separate from EnrollRequest since enrollment
+     * also mints a token and this never does.
+     */
+    public static class AssignmentRequest {
+        private Long employeeId;
+        private String hostname;
+        private String serialNumber;
+        private String macAddress;
+        private LocalDate assignedDate;
+        private Boolean active;
+
+        public Long getEmployeeId() {
+            return employeeId;
+        }
+
+        public void setEmployeeId(Long employeeId) {
+            this.employeeId = employeeId;
+        }
+
+        public String getHostname() {
+            return hostname;
+        }
+
+        public void setHostname(String hostname) {
+            this.hostname = hostname;
+        }
+
+        public String getSerialNumber() {
+            return serialNumber;
+        }
+
+        public void setSerialNumber(String serialNumber) {
+            this.serialNumber = serialNumber;
+        }
+
+        public String getMacAddress() {
+            return macAddress;
+        }
+
+        public void setMacAddress(String macAddress) {
+            this.macAddress = macAddress;
+        }
+
+        public LocalDate getAssignedDate() {
+            return assignedDate;
+        }
+
+        public void setAssignedDate(LocalDate assignedDate) {
+            this.assignedDate = assignedDate;
+        }
+
+        public Boolean getActive() {
+            return active;
+        }
+
+        public void setActive(Boolean active) {
+            this.active = active;
         }
     }
 

@@ -22,6 +22,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     Optional<Employee> findByEmployeeCode(String employeeCode);
 
+    /** Used by monitoring.AgentIngestService#resolveEmployee - the agent authenticates by Employee ID first, windowsUsername only as a fallback. */
+    Optional<Employee> findByEmployeeCodeAndDeletedFalse(String employeeCode);
+
     Optional<Employee> findByBiometricDeviceUserIdAndDeletedFalse(String biometricDeviceUserId);
 
     Optional<Employee> findByUser_UsernameAndDeletedFalse(String username);
