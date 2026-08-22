@@ -38,13 +38,13 @@ public class DeviceEnrollmentService {
         this.employeeRepository = employeeRepository;
         this.auditLogService = auditLogService;
     }
-
+    @Transactional(readOnly = true)
     public List<MonitoredDeviceDTO> listAll() {
         return deviceRepository.findAllByDeletedFalseOrderByDeviceNameAsc().stream()
                 .map(MonitoredDeviceDTO::from)
                 .toList();
     }
-
+    @Transactional(readOnly = true)
     public MonitoredDeviceDTO get(Long id) {
         return MonitoredDeviceDTO.from(findOrThrow(id));
     }
