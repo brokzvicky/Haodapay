@@ -32,23 +32,29 @@ public interface ActivitySessionRepository extends JpaRepository<ActivitySession
      * simply excluding those rows once any employee-scoped filter is set,
      * same as an inner join would.
      */
-    @Query("select s from ActivitySession s " +
-            "join s.device d " +
-            "left join s.employee e " +
-            "where s.startTime >= :from and s.startTime < :to " +
-            "and (:employeeId is null or e.id = :employeeId) " +
-            "and (:employeeCode is null or lower(e.employeeCode) = lower(:employeeCode)) " +
-            "and (:employeeName is null or lower(concat(e.firstName, ' ', e.lastName)) like lower(concat('%', :employeeName, '%'))) " +
-            "and (:departmentId is null or e.department.id = :departmentId) " +
-            "and (:deviceId is null or d.id = :deviceId) " +
-            "and (:deviceName is null or lower(d.deviceName) like lower(concat('%', :deviceName, '%'))) " +
-            "order by s.startTime asc")
-    List<ActivitySession> search(@Param("from") LocalDateTime from,
-                                  @Param("to") LocalDateTime to,
-                                  @Param("employeeId") Long employeeId,
-                                  @Param("employeeCode") String employeeCode,
-                                  @Param("employeeName") String employeeName,
-                                  @Param("departmentId") Long departmentId,
-                                  @Param("deviceId") Long deviceId,
-                                  @Param("deviceName") String deviceName);
-}
+    @Query("""
+select s
+from ActivitySession s
+join s.device d
+left join s.employee e
+where s.startTime >= :from
+and s.startTime < :to
+and (:employeeId is null or e.id = :employeeId)
+and (:employeeCode is null or e.employeeCode = :employeeCode)
+and (:employeeName is null or
+     concat(coalesce(e.firstName,''), ' ', coalesce(e.lastName,''))
+     like concat('%', :employeeName, '%'))
+and (:departmentId is null or e.department.id = :departmentId)
+and (:deviceId is null or d.id = :deviceId)
+and (:deviceName is null or d.deviceName like concat('%', :deviceName, '%'))
+order by s.startTime asc
+""")
+    List<ActivitySession> search(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("employeeId") Long employeeId,
+            @Param("employeeCode") String employeeCode,
+            @Param("employeeName") String employeeName,
+            @Param("departmentId") Long departmentId,
+            @Param("deviceId") Long deviceId,
+            @Param("deviceName") String deviceName);}
