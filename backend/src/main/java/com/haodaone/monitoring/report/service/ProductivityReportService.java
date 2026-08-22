@@ -119,11 +119,24 @@ public class ProductivityReportService {
         return list.size() > RANKING_LIMIT ? new ArrayList<>(list.subList(0, RANKING_LIMIT)) : list;
     }
 
+    /**
+     * Builds the wildcard patterns in Java, never in JPQL - see
+     * ActivitySessionRepository#search's javadoc for exactly why. Both
+     * patterns are pre-lower-cased and combined with `ilike` at the SQL
+     * layer, so this method's own case-folding here is just for
+     * readability/consistency, not required for correctness.
+     */
     List<ActivitySession> fetchSessions(ReportFilter filter) {
         LocalDateTime from = filter.getStartDate().atStartOfDay();
         LocalDateTime to = filter.getEndDate().plusDays(1).atStartOfDay();
+        String employeeNamePattern = toPattern(filter.getEmployeeName());
+        String deviceNamePattern = toPattern(filter.getDeviceName());
         return activitySessionRepository.search(from, to, filter.getEmployeeId(), filter.getEmployeeCode(),
-                filter.getEmployeeName(), filter.getDepartmentId(), filter.getDeviceId(), filter.getDeviceName());
+                employeeNamePattern, filter.getDepartmentId(), filter.getDeviceId(), deviceNamePattern);
+    }
+
+    private String toPattern(String rawValue) {
+        return (rawValue == null || rawValue.isBlank()) ? null : "%" + rawValue.trim() + "%";
     }
 
     private Map<String, List<ActivitySession>> groupByEmployeeDeviceDay(List<ActivitySession> sessions) {

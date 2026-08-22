@@ -31,6 +31,15 @@ public interface ActivitySessionRepository extends JpaRepository<ActivitySession
      * tolerate a null employee on the session (unassigned devices) by
      * simply excluding those rows once any employee-scoped filter is set,
      * same as an inner join would.
+     *
+     * IMPORTANT - do not wrap :employeeNamePattern / :deviceNamePattern in
+     * concat()/lower() here. See ProductivityReportService#fetchSessions
+     * for why: those two parameters must arrive pre-built ("%value%",
+     * already lower-cased) and be compared directly via `ilike` against a
+     * mapped String expression, or Hibernate 6 cannot infer a JDBC type for
+     * them and silently binds them as bytea, which blows up every report
+     * endpoint with "function lower(bytea) does not exist" /
+     * "operator does not exist: text ~~ bytea".
      */
     @Query("""
 select s
@@ -41,9 +50,10 @@ where s.startTime >= :from
 and s.startTime < :to
 and (:employeeId is null or e.id = :employeeId)
 and (:employeeCode is null or e.employeeCode = :employeeCode)
-and (:employeeName is null or lower(concat(e.firstName, ' ', e.lastName)) like lower(concat('%', :employeeName, '%')))and (:departmentId is null or e.department.id = :departmentId)
+and (:employeeNamePattern is null or concat(e.firstName, ' ', e.lastName) ilike :employeeNamePattern)
+and (:departmentId is null or e.department.id = :departmentId)
 and (:deviceId is null or d.id = :deviceId)
-and (:deviceName is null or d.deviceName like concat('%', :deviceName, '%'))
+and (:deviceNamePattern is null or d.deviceName ilike :deviceNamePattern)
 order by s.startTime asc
 """)
     List<ActivitySession> search(
@@ -51,8 +61,9 @@ order by s.startTime asc
             @Param("to") LocalDateTime to,
             @Param("employeeId") Long employeeId,
             @Param("employeeCode") String employeeCode,
-            @Param("employeeName") String employeeName,
+            @Param("employeeNamePattern") String employeeNamePattern,
             @Param("departmentId") Long departmentId,
             @Param("deviceId") Long deviceId,
-            @Param("deviceName") String deviceName
-    );}
+            @Param("deviceNamePattern") String deviceNamePattern
+    );
+}
