@@ -41,8 +41,10 @@ where s.startTime >= :from
 and s.startTime < :to
 and (:employeeId is null or e.id = :employeeId)
 and (:employeeCode is null or e.employeeCode = :employeeCode)
+and (:employeeName is null or e.fullName like concat('%', :employeeName, '%'))
 and (:departmentId is null or e.department.id = :departmentId)
 and (:deviceId is null or d.id = :deviceId)
+and (:deviceName is null or d.deviceName like concat('%', :deviceName, '%'))
 order by s.startTime asc
 """)
     List<ActivitySession> search(
@@ -53,4 +55,5 @@ order by s.startTime asc
             @Param("employeeName") String employeeName,
             @Param("departmentId") Long departmentId,
             @Param("deviceId") Long deviceId,
-            @Param("deviceName") String deviceName);}
+            @Param("deviceName") String deviceName
+    );}
