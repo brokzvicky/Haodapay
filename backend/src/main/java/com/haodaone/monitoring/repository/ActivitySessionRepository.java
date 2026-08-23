@@ -16,13 +16,20 @@ public interface ActivitySessionRepository extends JpaRepository<ActivitySession
     /** De-duplication check for batch ingestion - see AgentIngestService#recordActivityBatch. */
     boolean existsBySessionId(String sessionId);
 
-    Page<ActivitySession> findByDevice_IdOrderByStartTimeDesc(Long deviceId, Pageable pageable);
+    @Query("select s from ActivitySession s join s.device d where s.device.id = :deviceId and d.deleted = false order by s.startTime desc")
+    Page<ActivitySession> findByDevice_IdOrderByStartTimeDesc(@Param("deviceId") Long deviceId, Pageable pageable);
 
-    Page<ActivitySession> findByEmployee_IdOrderByStartTimeDesc(Long employeeId, Pageable pageable);
+    @Query("select s from ActivitySession s join s.device d where s.employee.id = :employeeId and d.deleted = false order by s.startTime desc")
+    Page<ActivitySession> findByEmployee_IdOrderByStartTimeDesc(@Param("employeeId") Long employeeId, Pageable pageable);
 
-    Page<ActivitySession> findByStartTimeBetweenOrderByStartTimeDesc(LocalDateTime from, LocalDateTime to, Pageable pageable);
+    @Query("select s from ActivitySession s join s.device d where s.startTime between :from and :to and d.deleted = false order by s.startTime desc")
+    Page<ActivitySession> findByStartTimeBetweenOrderByStartTimeDesc(@Param("from") LocalDateTime from,
+                                                                      @Param("to") LocalDateTime to,
+                                                                      Pageable pageable);
 
-    long countByDevice_IdAndIdleSessionFalseAndStartTimeAfter(Long deviceId, LocalDateTime after);
+    @Query("select count(s) from ActivitySession s join s.device d where s.device.id = :deviceId and d.deleted = false and s.idleSession = false and s.startTime > :after")
+    long countByDevice_IdAndIdleSessionFalseAndStartTimeAfter(@Param("deviceId") Long deviceId,
+                                                               @Param("after") LocalDateTime after);
 
     /**
      * Backs every report/productivity/export endpoint in
@@ -49,6 +56,7 @@ join s.device d
 left join s.employee e
 where s.startTime >= :from
 and s.startTime < :to
+and d.deleted = false
 and (:employeeId is null or e.id = :employeeId)
 and (:employeeCode is null or e.employeeCode = :employeeCode)
 and (:employeeNamePattern is null or concat(e.firstName, ' ', e.lastName) ilike :employeeNamePattern)
@@ -79,6 +87,7 @@ order by s.startTime asc
             join monitored_device d on d.id = s.device_id
                         left join employee e on e.id = s.employee_id
             where s.start_time >= :from and s.start_time < :to
+                            and d.deleted = false
                               and (cast(:employeeId as bigint) is null or s.employee_id = cast(:employeeId as bigint))
                               and (cast(:employeeCode as text) is null or e.employee_id = cast(:employeeCode as text))
                               and (cast(:employeeNamePattern as text) is null or e.employee_name ilike cast(:employeeNamePattern as text))
@@ -122,6 +131,7 @@ join s.device d
 left join s.employee e
 where s.startTime >= :from
 and s.startTime < :to
+and d.deleted = false
 and (:employeeId is null or e.id = :employeeId)
 and (:employeeCode is null or e.employeeCode = :employeeCode)
 and (:deviceId is null or d.id = :deviceId)
@@ -134,6 +144,7 @@ join s.device d
 left join s.employee e
 where s.startTime >= :from
 and s.startTime < :to
+and d.deleted = false
 and (:employeeId is null or e.id = :employeeId)
 and (:employeeCode is null or e.employeeCode = :employeeCode)
 and (:deviceId is null or d.id = :deviceId)

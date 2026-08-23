@@ -69,7 +69,7 @@ public class MonitoringQueryService {
             throw new IllegalArgumentException("Device ID must not be null");
         }
 
-        if (!deviceRepository.existsById(deviceId)) {
+        if (!deviceRepository.existsByIdAndDeletedFalse(deviceId)) {
             throw new ResourceNotFoundException(
                     "Monitored device not found: " + deviceId
             );
