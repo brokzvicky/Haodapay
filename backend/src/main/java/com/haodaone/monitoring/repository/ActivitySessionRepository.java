@@ -79,12 +79,12 @@ order by s.startTime asc
             join monitored_device d on d.id = s.device_id
                         left join employee e on e.id = s.employee_id
             where s.start_time >= :from and s.start_time < :to
-                            and (:employeeId is null or s.employee_id = :employeeId)
-                            and (:employeeCode is null or e.employee_id = :employeeCode)
-                            and (:employeeNamePattern is null or e.employee_name ilike :employeeNamePattern)
-                            and (:departmentId is null or e.department_id = :departmentId)
-              and (:deviceId is null or d.id = :deviceId)
-              and (:deviceNamePattern is null or d.device_name ilike :deviceNamePattern)
+                              and (cast(:employeeId as bigint) is null or s.employee_id = cast(:employeeId as bigint))
+                              and (cast(:employeeCode as text) is null or e.employee_id = cast(:employeeCode as text))
+                              and (cast(:employeeNamePattern as text) is null or e.employee_name ilike cast(:employeeNamePattern as text))
+                              and (cast(:departmentId as bigint) is null or e.department_id = cast(:departmentId as bigint))
+                              and (cast(:deviceId as bigint) is null or d.id = cast(:deviceId as bigint))
+                              and (cast(:deviceNamePattern as text) is null or d.device_name ilike cast(:deviceNamePattern as text))
             group by s.employee_id, s.device_id, cast(s.start_time as date),
                  s.application_name, s.is_idle_session, s.window_title
             order by usageDate desc, seconds desc
