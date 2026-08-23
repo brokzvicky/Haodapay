@@ -46,7 +46,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     long countByDateOfJoiningGreaterThanEqualAndDeletedFalse(LocalDate since);
 
     @Query("select count(e) from Employee e where e.deleted = false " +
-            "and e.status in ('Resigned','Terminated') and e.updatedAt >= :since")
+            "and e.status in ('Resigned','Terminated','Exit Clearance','Assets Returned') and e.updatedAt >= :since")
     long countSeparationsSince(@Param("since") LocalDateTime since);
 
     @Query("select e from Employee e where e.deleted = false and (" +
