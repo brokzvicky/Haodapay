@@ -11,7 +11,9 @@ public class ActivitySessionDTO {
     private Long deviceId;
     private String deviceName;
     private Long employeeId;
+    private String employeeCode;
     private String employeeName;
+    private String departmentName;
     private String processName;
     private String applicationName;
     private String windowTitle;
@@ -35,7 +37,9 @@ public class ActivitySessionDTO {
         dto.idleSession = s.isIdleSession();
         if (s.getEmployee() != null) {
             dto.employeeId = s.getEmployee().getId();
+            dto.employeeCode = s.getEmployee().getEmployeeCode();
             dto.employeeName = s.getEmployee().getFullName();
+            dto.departmentName = s.getEmployee().getDepartment() != null ? s.getEmployee().getDepartment().getName() : null;
         }
         return dto;
     }
@@ -60,8 +64,16 @@ public class ActivitySessionDTO {
         return employeeId;
     }
 
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
     public String getEmployeeName() {
         return employeeName;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
     }
 
     public String getProcessName() {

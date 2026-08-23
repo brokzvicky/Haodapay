@@ -24,6 +24,18 @@ public class ActivitySessionController {
         this.monitoringQueryService = monitoringQueryService;
     }
 
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('MONITORING_VIEW')")
+    public Page<ActivitySessionDTO> search(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+                                            @RequestParam(required = false) Long employeeId,
+                                            @RequestParam(required = false) String employeeCode,
+                                            @RequestParam(required = false) Long deviceId,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "50") int size) {
+        return monitoringQueryService.search(from, to, employeeId, employeeCode, deviceId, page, size);
+    }
+
     @GetMapping("/device/{deviceId}")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public Page<ActivitySessionDTO> byDevice(@PathVariable Long deviceId,

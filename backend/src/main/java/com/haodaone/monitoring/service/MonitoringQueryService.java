@@ -28,6 +28,36 @@ public class MonitoringQueryService {
     }
 
     /**
+     * Combined date + employee + device filter for the Activity page - the
+     * root fix for "No activity in this range": previously byDevice(),
+     * byEmployee() and byDateRange() below were mutually exclusive, so a
+     * page that needs to filter by date range AND employee/device at the
+     * same time had no working endpoint to call. Also accepts employeeCode
+     * directly (e.g. "HAODA-0042") - the same identifier shown everywhere
+     * else in the UI (Device Assignment table's "Employee ID" column) -
+     * instead of forcing the caller to resolve it to Employee.id first.
+     */
+    public Page<ActivitySessionDTO> search(LocalDateTime from, LocalDateTime to, Long employeeId,
+                                            String employeeCode, Long deviceId, int page, int size) {
+        if (from == null) {
+            throw new IllegalArgumentException("From date must not be null");
+        }
+        if (to == null) {
+            throw new IllegalArgumentException("To date must not be null");
+        }
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException("From date must not be after To date");
+        }
+
+        Pageable pageable = createPageable(page, size);
+        String trimmedCode = (employeeCode == null || employeeCode.isBlank()) ? null : employeeCode.trim();
+
+        return activitySessionRepository
+                .searchPaged(from, to, employeeId, trimmedCode, deviceId, pageable)
+                .map(ActivitySessionDTO::from);
+    }
+
+    /**
      * Get paginated activity sessions for a monitored device.
      */
     public Page<ActivitySessionDTO> byDevice(

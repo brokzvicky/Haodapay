@@ -66,4 +66,51 @@ order by s.startTime asc
             @Param("deviceId") Long deviceId,
             @Param("deviceNamePattern") String deviceNamePattern
     );
+
+    /**
+     * Paginated counterpart of search() for the Activity page - same
+     * filters (date range + employeeId + employeeCode + deviceId), same
+     * ilike-not-concat rule applies to :employeeCode, but here it's an
+     * exact match (Activity page filters by the same Employee ID/code
+     * shown in the Device Assignment table), not a fuzzy pattern, so no
+     * pattern-building is needed for it.
+     *
+     * This is the query the Activity page's "no activity" bug traced back
+     * to: previously there was no single endpoint that could combine a
+     * date range with an employee/device filter at all (see
+     * ActivitySessionController - byDevice / byEmployee / byDateRange were
+     * three mutually-exclusive methods), so the frontend's employeeCode
+     * filter, if wired up, had nowhere valid to go.
+     */
+    @Query(value = """
+select s
+from ActivitySession s
+join s.device d
+left join s.employee e
+where s.startTime >= :from
+and s.startTime < :to
+and (:employeeId is null or e.id = :employeeId)
+and (:employeeCode is null or e.employeeCode = :employeeCode)
+and (:deviceId is null or d.id = :deviceId)
+order by s.startTime desc
+""",
+            countQuery = """
+select count(s)
+from ActivitySession s
+join s.device d
+left join s.employee e
+where s.startTime >= :from
+and s.startTime < :to
+and (:employeeId is null or e.id = :employeeId)
+and (:employeeCode is null or e.employeeCode = :employeeCode)
+and (:deviceId is null or d.id = :deviceId)
+""")
+    Page<ActivitySession> searchPaged(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("employeeId") Long employeeId,
+            @Param("employeeCode") String employeeCode,
+            @Param("deviceId") Long deviceId,
+            Pageable pageable
+    );
 }
