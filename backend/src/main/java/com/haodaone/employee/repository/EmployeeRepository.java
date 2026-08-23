@@ -4,6 +4,7 @@ import com.haodaone.employee.entity.Employee;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -64,14 +65,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
      * left untouched since Dashboard/my-team/recentJoiners etc. all rely
      * on their existing bounded/unpaginated behavior and don't need this.
      */
-    Page<Employee> findAllByDeletedFalse(Pageable pageable);
+        @EntityGraph(attributePaths = {"department", "designation", "reportingManager"})
+        Page<Employee> findAllByDeletedFalse(Pageable pageable);
 
     @Query("select e from Employee e where e.deleted = false and (" +
             "lower(e.firstName) like lower(concat('%', :term, '%')) or " +
             "lower(e.lastName) like lower(concat('%', :term, '%')) or " +
             "lower(e.employeeCode) like lower(concat('%', :term, '%')) or " +
             "lower(e.email) like lower(concat('%', :term, '%')))")
-    Page<Employee> searchPaged(@Param("term") String term, Pageable pageable);
+        @EntityGraph(attributePaths = {"department", "designation", "reportingManager"})
+        Page<Employee> searchPaged(@Param("term") String term, Pageable pageable);
 
     /**
      * Paged directory filtered to one department - powers the drill-down
@@ -90,7 +93,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             "lower(e.lastName) like lower(concat('%', :term, '%')) or " +
             "lower(e.employeeCode) like lower(concat('%', :term, '%')) or " +
             "lower(e.email) like lower(concat('%', :term, '%')))")
-    Page<Employee> searchPagedByDepartment(@Param("term") String term, @Param("departmentId") Long departmentId, Pageable pageable);
+        @EntityGraph(attributePaths = {"department", "designation", "reportingManager"})
+        Page<Employee> searchPagedByDepartment(@Param("term") String term, @Param("departmentId") Long departmentId, Pageable pageable);
 
     /**
      * Filterable roster used by the Salary module's Employee Salary List
