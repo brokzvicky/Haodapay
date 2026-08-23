@@ -80,7 +80,7 @@ order by s.startTime asc
             left join employee e on e.id = s.employee_id
             where s.start_time >= :from and s.start_time < :to
               and (:employeeId is null or e.id = :employeeId)
-              and (:employeeCode is null or e.employee_code = :employeeCode)
+              and (:employeeCode is null or e.employee_id = :employeeCode)
               and (:employeeNamePattern is null or concat(e.first_name, ' ', e.last_name) ilike :employeeNamePattern)
               and (:departmentId is null or e.department_id = :departmentId)
               and (:deviceId is null or d.id = :deviceId)
