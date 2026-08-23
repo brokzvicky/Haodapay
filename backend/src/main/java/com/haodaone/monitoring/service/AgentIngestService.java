@@ -24,6 +24,37 @@ import java.util.List;
  * service never re-validates the token itself, same separation
  * JwtAuthenticationFilter/CustomUserDetailsService already establish for
  * user auth.
+ *
+ * INCIDENT WRITEUP - "activity/batch returns 200 but activity_session never
+ * gets new rows":
+ *
+ * Root cause #1 (the actual bug): JSON casing. See ActivityBatchRequest's
+ * javadoc - the agent's real wire format is PascalCase, Jackson's default
+ * matching is case-sensitive, and Spring Boot doesn't fail on unmatched
+ * properties, so {@code request.getSessions()} silently deserialized to an
+ * empty list. The for-loop below then had nothing to iterate, "accepted"
+ * stayed empty, and the controller returned a perfectly well-formed 200
+ * with acceptedSessionIds=[] - no exception anywhere in the stack, which is
+ * exactly why this was invisible without the logging added below. Fixed by
+ * @JsonAlias on every agent DTO field plus a global case-insensitive
+ * Jackson customizer (config.JacksonConfig).
+ *
+ * Root cause #2 (a real but separate latent bug, fixed defensively even
+ * though it isn't what produced the reported symptom): the MonitoredDevice
+ * handed in as {@code authenticatedDevice} was loaded by
+ * AgentTokenAuthenticationFilter via a plain repository call, which opens
+ * and commits its own short-lived transaction and returns a DETACHED
+ * entity. recordActivityBatch used that detached instance directly as the
+ * FK target for every ActivitySession AND never re-saved it, so (a) any
+ * identity resync done in syncDeviceIdentity (new employee assignment, IP,
+ * agent version, etc.) during an activity-batch call was computed and then
+ * silently discarded - only recordHeartbeat happened to persist it - and
+ * (b) any code path that ends up touching a LAZY association on that
+ * detached device (e.g. device.getEmployee()) is one Hibernate/driver
+ * version away from a LazyInitializationException. Both methods below now
+ * re-fetch a managed instance by id at the top of the transaction instead
+ * of trusting the filter-supplied reference, and recordActivityBatch now
+ * saves the device the same way recordHeartbeat always did.
  */
 @Service
 public class AgentIngestService {
@@ -44,7 +75,8 @@ public class AgentIngestService {
 
     @Transactional
     public HeartbeatResponseData recordHeartbeat(MonitoredDevice authenticatedDevice, HeartbeatRequest request, String remoteIp) {
-        MonitoredDevice device = syncDeviceIdentity(authenticatedDevice, request.getDevice(), remoteIp);
+        MonitoredDevice device = attachManagedDevice(authenticatedDevice);
+        device = syncDeviceIdentity(device, request.getDevice(), remoteIp);
 
         device.setStatus(request.getStatus() != null ? request.getStatus() : "ONLINE");
         device.setCurrentApplication(request.getCurrentApplication());
@@ -67,10 +99,36 @@ public class AgentIngestService {
 
     @Transactional
     public ActivityBatchResponseData recordActivityBatch(MonitoredDevice authenticatedDevice, ActivityBatchRequest request, String remoteIp) {
-        MonitoredDevice device = syncDeviceIdentity(authenticatedDevice, request.getDevice(), remoteIp);
+        // --- Diagnostic logging (requested for this incident) ---------------
+        // These two lines are the whole story: if "sessions" logs 0 while the
+        // agent's own logs say N sessions were flushed, the request body did
+        // not deserialize the way we think it did - see the class javadoc.
+        log.info("Activity batch received: {} sessions",
+                request.getSessions() == null ? 0 : request.getSessions().size());
+        log.info("Device payload: {}",
+                request.getDevice() == null ? "NULL" : request.getDevice().getDeviceId());
+
+        // Re-fetch a MANAGED instance instead of trusting the detached one
+        // the auth filter supplied - see class javadoc, root cause #2.
+        MonitoredDevice device = attachManagedDevice(authenticatedDevice);
+        device = syncDeviceIdentity(device, request.getDevice(), remoteIp);
+        // recordHeartbeat always persisted identity-sync changes; this path
+        // never did. Save it here too so an activity-only agent (monitoring
+        // active, heartbeat lagging) doesn't silently lose employee/IP resync.
+        device = deviceRepository.save(device);
+
+        List<ActivitySessionPayload> sessions = request.getSessions();
+        if (sessions == null || sessions.isEmpty()) {
+            log.warn("Activity batch for device {} contained no sessions after deserialization - " +
+                            "if the agent's own logs say it sent sessions, this is a request-body " +
+                            "binding mismatch (casing/shape), not a persistence failure.",
+                    device.getDeviceId());
+            return ActivityBatchResponseData.of(new ArrayList<>());
+        }
 
         List<String> accepted = new ArrayList<>();
-        for (ActivitySessionPayload payload : request.getSessions()) {
+        int savedCount = 0;
+        for (ActivitySessionPayload payload : sessions) {
             if (activitySessionRepository.existsBySessionId(payload.getSessionId())) {
                 // Already persisted from a previous delivery attempt - still report it accepted
                 // so the agent's LocalCacheService prunes it, matching ApiClientService's contract.
@@ -100,12 +158,35 @@ public class AgentIngestService {
                 resolveEmployee(username).ifPresent(session::setEmployee);
             }
 
-            activitySessionRepository.save(session);
+            log.info("Saving activity session {} (device={}, app={}, start={})",
+                    payload.getSessionId(), device.getDeviceId(), payload.getApplicationName(), payload.getStartTimeUtc());
+            ActivitySession saved = activitySessionRepository.save(session);
+            log.info("Saved activity session {} -> row id {}", payload.getSessionId(), saved.getId());
+
+            savedCount++;
             accepted.add(payload.getSessionId());
         }
 
-        log.debug("Accepted {}/{} activity sessions for device {}", accepted.size(), request.getSessions().size(), device.getDeviceId());
+        log.info("Accepted {}/{} activity sessions for device {} ({} newly inserted, {} already present)",
+                accepted.size(), sessions.size(), device.getDeviceId(), savedCount, accepted.size() - savedCount);
         return ActivityBatchResponseData.of(accepted);
+    }
+
+    /**
+     * Re-fetches the device by id inside the CURRENT transaction/persistence
+     * context. authenticatedDevice (from @AuthenticationPrincipal) was
+     * loaded by AgentTokenAuthenticationFilter in its own already-committed
+     * transaction, so it is detached here - using it directly is what let
+     * identity-sync writes get silently dropped in recordActivityBatch, and
+     * is one Hibernate upgrade away from a LazyInitializationException the
+     * first time a lazy field on it (e.g. employee) is actually initialized
+     * rather than just null-checked. This keeps every write in this service
+     * operating on a managed entity for the rest of the transaction.
+     */
+    private MonitoredDevice attachManagedDevice(MonitoredDevice authenticatedDevice) {
+        return deviceRepository.findById(authenticatedDevice.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Authenticated device id " + authenticatedDevice.getId() + " no longer exists"));
     }
 
     /**

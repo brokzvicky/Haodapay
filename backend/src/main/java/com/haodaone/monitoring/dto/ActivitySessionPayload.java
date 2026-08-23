@@ -1,33 +1,50 @@
 package com.haodaone.monitoring.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.OffsetDateTime;
 
-/** Field-for-field mirror of HaodaOne.Agent.Models.ActivitySession - one entry in ActivityBatchRequest.sessions. */
+/**
+ * Field-for-field mirror of HaodaOne.Agent.Models.ActivitySession - one
+ * entry in ActivityBatchRequest.sessions. @JsonAlias on every field accepts
+ * the agent's actual PascalCase wire format (System.Text.Json's true
+ * default) in addition to camelCase - see ActivityBatchRequest's javadoc
+ * for the full root-cause writeup.
+ */
 public class ActivitySessionPayload {
 
     @NotBlank
+    @JsonAlias({"SessionId"})
     private String sessionId;
 
+    @JsonAlias({"DeviceId"})
     private String deviceId;
 
+    @JsonAlias({"Username", "UserName"})
     private String username;
 
+    @JsonAlias({"ProcessName"})
     private String processName;
 
+    @JsonAlias({"ApplicationName"})
     private String applicationName;
 
+    @JsonAlias({"WindowTitle"})
     private String windowTitle;
 
     @NotNull
+    @JsonAlias({"StartTimeUtc", "StartTimeUTC"})
     private OffsetDateTime startTimeUtc;
 
+    @JsonAlias({"EndTimeUtc", "EndTimeUTC"})
     private OffsetDateTime endTimeUtc;
 
+    @JsonAlias({"DurationSeconds"})
     private int durationSeconds;
 
+    @JsonAlias({"IsIdleSession", "IdleSession"})
     private boolean isIdleSession;
 
     public String getSessionId() {
