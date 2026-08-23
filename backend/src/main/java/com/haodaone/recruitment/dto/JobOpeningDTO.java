@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class JobOpeningDTO {
     private Long id;
@@ -22,6 +23,10 @@ public class JobOpeningDTO {
     private long hiredCount;
     private Long recruiterId;
     private String recruiterName;
+    private String closedReason;
+    private String closedComments;
+    private String closedBy;
+    private LocalDateTime closedAt;
 
     public static JobOpeningDTO from(JobOpening j) {
         JobOpeningDTO dto = new JobOpeningDTO();
@@ -32,6 +37,10 @@ public class JobOpeningDTO {
         dto.status = j.getStatus();
         dto.description = j.getDescription();
         dto.postedDate = j.getPostedDate();
+        dto.closedReason = j.getClosedReason();
+        dto.closedComments = j.getClosedComments();
+        dto.closedBy = j.getClosedBy();
+        dto.closedAt = j.getClosedAt();
         if (j.getDepartment() != null) {
             dto.departmentId = j.getDepartment().getId();
             dto.departmentName = j.getDepartment().getName();
@@ -114,6 +123,11 @@ public class JobOpeningDTO {
     public String getRecruiterName() {
         return recruiterName;
     }
+
+    public String getClosedReason() { return closedReason; }
+    public String getClosedComments() { return closedComments; }
+    public String getClosedBy() { return closedBy; }
+    public LocalDateTime getClosedAt() { return closedAt; }
 
     public static class CreateRequest {
         @NotBlank(message = "Title is required")

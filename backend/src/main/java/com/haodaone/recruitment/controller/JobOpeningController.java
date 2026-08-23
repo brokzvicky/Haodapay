@@ -38,6 +38,7 @@ public class JobOpeningController {
         return jobOpeningService.setStatus(id, body.get("status"));
     }
 
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

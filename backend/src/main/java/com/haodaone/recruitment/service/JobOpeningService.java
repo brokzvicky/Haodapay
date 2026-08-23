@@ -7,6 +7,7 @@ import com.haodaone.employee.repository.EmployeeRepository;
 import com.haodaone.org.repository.DepartmentRepository;
 import com.haodaone.org.repository.DesignationRepository;
 import com.haodaone.recruitment.dto.JobOpeningDTO;
+import com.haodaone.recruitment.dto.CloseRequisitionRequest;
 import com.haodaone.recruitment.entity.JobOpening;
 import com.haodaone.recruitment.repository.CandidateRepository;
 import com.haodaone.recruitment.repository.JobOpeningRepository;
@@ -16,11 +17,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDateTime;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 public class JobOpeningService {
 
     private static final Set<String> VALID_STATUSES = Set.of("OPEN", "ON_HOLD", "CLOSED");
+    private static final Set<String> VALID_CLOSE_REASONS = Set.of("POSITION_FILLED", "HIRING_CANCELLED", "BUDGET_ON_HOLD", "DUPLICATE_REQUISITION", "OTHER");
 
     private final JobOpeningRepository jobOpeningRepository;
     private final CandidateRepository candidateRepository;
@@ -88,6 +93,9 @@ public class JobOpeningService {
         if (!VALID_STATUSES.contains(status)) {
             throw new BadRequestException("Unknown status: " + status + ". Must be one of " + VALID_STATUSES);
         }
+        if ("CLOSED".equals(status)) {
+            throw new BadRequestException("Use the close requisition action with a reason");
+        }
         JobOpening opening = jobOpeningRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Job opening not found: " + id));
         String old = opening.getStatus();
@@ -97,6 +105,32 @@ public class JobOpeningService {
         }
         JobOpening saved = jobOpeningRepository.save(opening);
         auditLogService.log("JobOpening", saved.getId(), "STATUS_CHANGE", "status: " + old + " -> " + status);
+        return toEnrichedDTO(saved);
+    }
+
+    @Transactional
+    public JobOpeningDTO close(Long id, CloseRequisitionRequest request) {
+        JobOpening opening = jobOpeningRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job opening not found: " + id));
+        if (!"OPEN".equals(opening.getStatus())) {
+            throw new BadRequestException("Only OPEN requisitions can be closed");
+        }
+        String reason = request.getReason().trim();
+        if (reason.isEmpty()) throw new BadRequestException("Close reason is required");
+        if (!VALID_CLOSE_REASONS.contains(reason)) {
+            throw new BadRequestException("Invalid close reason");
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth != null && auth.isAuthenticated() ? auth.getName() : "system";
+        LocalDateTime now = LocalDateTime.now();
+        opening.setStatus("CLOSED");
+        opening.setClosedDate(now.toLocalDate());
+        opening.setClosedReason(reason);
+        opening.setClosedComments(request.getComments() == null || request.getComments().isBlank() ? null : request.getComments().trim());
+        opening.setClosedBy(username);
+        opening.setClosedAt(now);
+        JobOpening saved = jobOpeningRepository.save(opening);
+        auditLogService.log("JobOpening", saved.getId(), "CLOSED", "Closed requisition '" + saved.getTitle() + "' (reason: " + reason + ")");
         return toEnrichedDTO(saved);
     }
 

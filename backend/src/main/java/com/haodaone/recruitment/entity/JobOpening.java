@@ -7,6 +7,7 @@ import com.haodaone.org.entity.Designation;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "job_opening")
@@ -41,6 +42,18 @@ public class JobOpening extends BaseEntity {
 
     @Column(name = "closed_date")
     private LocalDate closedDate;
+
+    @Column(name = "closed_reason", length = 80)
+    private String closedReason;
+
+    @Column(name = "closed_comments", length = 1000)
+    private String closedComments;
+
+    @Column(name = "closed_by", length = 100)
+    private String closedBy;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
 
     /** Who's running this requisition - optional, see V8 migration. Powers the Recruiter persona's "my open reqs" scoping. */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -118,6 +131,15 @@ public class JobOpening extends BaseEntity {
     public void setClosedDate(LocalDate closedDate) {
         this.closedDate = closedDate;
     }
+
+    public String getClosedReason() { return closedReason; }
+    public void setClosedReason(String closedReason) { this.closedReason = closedReason; }
+    public String getClosedComments() { return closedComments; }
+    public void setClosedComments(String closedComments) { this.closedComments = closedComments; }
+    public String getClosedBy() { return closedBy; }
+    public void setClosedBy(String closedBy) { this.closedBy = closedBy; }
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
 
     public Employee getRecruiter() {
         return recruiter;
