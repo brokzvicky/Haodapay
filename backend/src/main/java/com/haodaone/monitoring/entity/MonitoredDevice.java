@@ -291,6 +291,6 @@ public class MonitoredDevice extends BaseEntity {
 
     /** A device that hasn't heartbeat in 3+ missed intervals (default 60s each => 3 min) is shown offline in the dashboard, same threshold style as attendance.entity.Device#isOnline. */
     public boolean isOnline() {
-        return active && lastSeenAt != null && lastSeenAt.isAfter(LocalDateTime.now().minusMinutes(3));
+        return active && lastSeenAt != null && lastSeenAt.isAfter(LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(3));
     }
 }
