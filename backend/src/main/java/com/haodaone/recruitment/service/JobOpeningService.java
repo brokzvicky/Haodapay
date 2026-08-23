@@ -100,6 +100,20 @@ public class JobOpeningService {
         return toEnrichedDTO(saved);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        JobOpening opening = jobOpeningRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job opening not found: " + id));
+        long candidateCount = candidateRepository.countByJobOpeningIdAndDeletedFalse(id);
+        if (candidateCount > 0) {
+            throw new BadRequestException("Cannot delete a job opening with candidates. Close it instead.");
+        }
+        opening.setDeleted(true);
+        opening.setDeletedAt(java.time.LocalDateTime.now());
+        jobOpeningRepository.save(opening);
+        auditLogService.log("JobOpening", id, "DELETE", "Deleted requisition '" + opening.getTitle() + "'");
+    }
+
     private JobOpeningDTO toEnrichedDTO(JobOpening opening) {
         JobOpeningDTO dto = JobOpeningDTO.from(opening);
         dto.setCandidateCount(candidateRepository.countByJobOpeningIdAndDeletedFalse(opening.getId()));

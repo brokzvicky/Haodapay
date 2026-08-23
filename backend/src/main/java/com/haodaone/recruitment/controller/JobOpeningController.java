@@ -37,4 +37,11 @@ public class JobOpeningController {
     public JobOpeningDTO setStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return jobOpeningService.setStatus(id, body.get("status"));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('RECRUITMENT_MANAGE')")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        jobOpeningService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
