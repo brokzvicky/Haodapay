@@ -77,12 +77,12 @@ order by s.startTime asc
                bool_or(s.is_idle_session) as idle
             from activity_session s
             join monitored_device d on d.id = s.device_id
-            left join employee e on e.id = s.employee_id
+                        left join employee e on e.id = s.employee_id
             where s.start_time >= :from and s.start_time < :to
-              and (:employeeId is null or e.id = :employeeId)
-              and (:employeeCode is null or e.employee_id = :employeeCode)
-              and (:employeeNamePattern is null or concat(e.first_name, ' ', e.last_name) ilike :employeeNamePattern)
-              and (:departmentId is null or e.department_id = :departmentId)
+                            and (:employeeId is null or s.employee_id = :employeeId)
+                            and (:employeeCode is null or e.employee_id = :employeeCode)
+                            and (:employeeNamePattern is null or e.employee_name ilike :employeeNamePattern)
+                            and (:departmentId is null or e.department_id = :departmentId)
               and (:deviceId is null or d.id = :deviceId)
               and (:deviceNamePattern is null or d.device_name ilike :deviceNamePattern)
             group by s.employee_id, s.device_id, cast(s.start_time as date),
