@@ -1,6 +1,7 @@
 package com.haodaone.monitoring.repository;
 
 import com.haodaone.monitoring.entity.ActivitySession;
+import com.haodaone.monitoring.report.repository.ApplicationUsageProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -66,6 +67,38 @@ order by s.startTime asc
             @Param("deviceId") Long deviceId,
             @Param("deviceNamePattern") String deviceNamePattern
     );
+
+        @Query(value = """
+            select s.employee_id as employeeId, s.device_id as deviceId,
+               cast(s.start_time as date) as usageDate,
+               coalesce(s.application_name, case when s.is_idle_session then 'Idle' else 'Unknown Application' end) as applicationName,
+               coalesce(nullif(trim(s.window_title), ''), '(No window title)') as windowTitle,
+               sum(s.duration_seconds) as seconds,
+               bool_or(s.is_idle_session) as idle
+            from activity_session s
+            join monitored_device d on d.id = s.device_id
+            left join employee e on e.id = s.employee_id
+            where s.start_time >= :from and s.start_time < :to
+              and (:employeeId is null or e.id = :employeeId)
+              and (:employeeCode is null or e.employee_code = :employeeCode)
+              and (:employeeNamePattern is null or concat(e.first_name, ' ', e.last_name) ilike :employeeNamePattern)
+              and (:departmentId is null or e.department_id = :departmentId)
+              and (:deviceId is null or d.id = :deviceId)
+              and (:deviceNamePattern is null or d.device_name ilike :deviceNamePattern)
+            group by s.employee_id, s.device_id, cast(s.start_time as date),
+                 s.application_name, s.is_idle_session, s.window_title
+            order by usageDate desc, seconds desc
+            """, nativeQuery = true)
+        List<ApplicationUsageProjection> searchApplicationUsageGrouped(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("employeeId") Long employeeId,
+            @Param("employeeCode") String employeeCode,
+            @Param("employeeNamePattern") String employeeNamePattern,
+            @Param("departmentId") Long departmentId,
+            @Param("deviceId") Long deviceId,
+            @Param("deviceNamePattern") String deviceNamePattern
+        );
 
     /**
      * Paginated counterpart of search() for the Activity page - same

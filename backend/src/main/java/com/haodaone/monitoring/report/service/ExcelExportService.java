@@ -55,8 +55,7 @@ public class ExcelExportService {
             int rowIndex = 1;
             for (ProductivitySummaryDTO r : rows) {
                 Row row = sheet.createRow(rowIndex++);
-                AppUsageDTO topApp = (r.getTopApplications() != null && !r.getTopApplications().isEmpty())
-                        ? r.getTopApplications().get(0) : null;
+                List<AppUsageDTO> applications = r.getTopApplications() != null ? r.getTopApplications() : List.of();
 
                 int c = 0;
                 row.createCell(c++).setCellValue(nvl(r.getEmployeeCode()));
@@ -70,8 +69,11 @@ public class ExcelExportService {
                 row.createCell(c++).setCellValue(formatDuration(r.getIdleSeconds()));
                 row.createCell(c++).setCellValue(formatDuration(r.getBreakSeconds()));
                 row.createCell(c++).setCellValue(r.getProductivityPercent());
-                row.createCell(c++).setCellValue(topApp != null ? nvl(topApp.getApplicationName()) : "");
-                row.createCell(c).setCellValue(topApp != null ? nvl(topApp.getWindowTitle()) : "");
+                row.createCell(c++).setCellValue(applications.stream().map(app -> nvl(app.getApplicationName()))
+                    .distinct().reduce((left, right) -> left + ", " + right).orElse(""));
+                row.createCell(c).setCellValue(applications.stream()
+                    .map(app -> nvl(app.getApplicationName()) + " - " + nvl(app.getWindowTitle()) + " (" + formatDuration(app.getSeconds()) + ")")
+                    .reduce((left, right) -> left + "; " + right).orElse(""));
             }
 
             for (int i = 0; i < HEADERS.length; i++) {

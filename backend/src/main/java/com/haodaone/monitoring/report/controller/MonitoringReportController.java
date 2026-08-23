@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -86,6 +87,10 @@ public class MonitoringReportController {
         private LocalDate startDate;
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         private LocalDate endDate;
+        @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+        private LocalTime fromTime;
+        @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+        private LocalTime toTime;
         private Long employeeId;
         private String employeeCode;
         private String employeeName;
@@ -96,7 +101,8 @@ public class MonitoringReportController {
         ReportFilter toFilter() {
             LocalDate end = endDate != null ? endDate : LocalDate.now();
             LocalDate start = startDate != null ? startDate : end.minusDays(29);
-            return new ReportFilter(start, end, employeeId, employeeCode, employeeName, departmentId, deviceId, deviceName);
+                return new ReportFilter(start, end, fromTime, toTime, employeeId, employeeCode, employeeName,
+                    departmentId, deviceId, deviceName);
         }
 
         public LocalDate getStartDate() {
@@ -113,6 +119,22 @@ public class MonitoringReportController {
 
         public void setEndDate(LocalDate endDate) {
             this.endDate = endDate;
+        }
+
+        public LocalTime getFromTime() {
+            return fromTime;
+        }
+
+        public void setFromTime(LocalTime fromTime) {
+            this.fromTime = fromTime;
+        }
+
+        public LocalTime getToTime() {
+            return toTime;
+        }
+
+        public void setToTime(LocalTime toTime) {
+            this.toTime = toTime;
         }
 
         public Long getEmployeeId() {

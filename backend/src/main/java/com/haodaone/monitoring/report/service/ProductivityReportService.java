@@ -6,11 +6,13 @@ import com.haodaone.monitoring.report.dto.ManagementInsightsDTO;
 import com.haodaone.monitoring.report.dto.ProductivitySummaryDTO;
 import com.haodaone.monitoring.report.dto.ReportFilter;
 import com.haodaone.monitoring.repository.ActivitySessionRepository;
+import com.haodaone.monitoring.report.repository.ApplicationUsageProjection;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -36,7 +38,7 @@ public class ProductivityReportService {
      */
     private static final long BREAK_THRESHOLD_SECONDS = 15 * 60;
 
-    private static final int TOP_APPS_LIMIT = 8;
+    private static final int TOP_APPS_LIMIT = 50;
     private static final int RANKING_LIMIT = 10;
 
     private final ActivitySessionRepository activitySessionRepository;
@@ -48,11 +50,12 @@ public class ProductivityReportService {
     /** Every row of the filtered report, one per employee/device/day - backs both the Activity Report table and the Productivity Summary table. */
     public List<ProductivitySummaryDTO> buildSummary(ReportFilter filter) {
         List<ActivitySession> sessions = fetchSessions(filter);
+        Map<String, List<ApplicationUsageProjection>> usage = fetchApplicationUsage(filter);
         Map<String, List<ActivitySession>> grouped = groupByEmployeeDeviceDay(sessions);
 
         List<ProductivitySummaryDTO> rows = new ArrayList<>();
         for (List<ActivitySession> group : grouped.values()) {
-            rows.add(summarize(group));
+            rows.add(summarize(group, usage.get(summaryKey(group))));
         }
         rows.sort(Comparator.comparing(ProductivitySummaryDTO::getDate).reversed()
                 .thenComparing(dto -> Objects.toString(dto.getEmployeeName(), "")));
@@ -127,12 +130,28 @@ public class ProductivityReportService {
      * readability/consistency, not required for correctness.
      */
     List<ActivitySession> fetchSessions(ReportFilter filter) {
-        LocalDateTime from = filter.getStartDate().atStartOfDay();
-        LocalDateTime to = filter.getEndDate().plusDays(1).atStartOfDay();
+        LocalDateTime from = LocalDateTime.of(filter.getStartDate(), filter.getFromTime() != null
+            ? filter.getFromTime() : LocalTime.MIN);
+        LocalDateTime to = LocalDateTime.of(filter.getEndDate(), filter.getToTime() != null
+            ? filter.getToTime() : LocalTime.MAX);
+        if (filter.getToTime() == null) to = to.plusNanos(1);
         String employeeNamePattern = toPattern(filter.getEmployeeName());
         String deviceNamePattern = toPattern(filter.getDeviceName());
         return activitySessionRepository.search(from, to, filter.getEmployeeId(), filter.getEmployeeCode(),
                 employeeNamePattern, filter.getDepartmentId(), filter.getDeviceId(), deviceNamePattern);
+    }
+
+    private Map<String, List<ApplicationUsageProjection>> fetchApplicationUsage(ReportFilter filter) {
+        LocalDateTime from = LocalDateTime.of(filter.getStartDate(), filter.getFromTime() != null ? filter.getFromTime() : LocalTime.MIN);
+        LocalDateTime to = LocalDateTime.of(filter.getEndDate(), filter.getToTime() != null ? filter.getToTime() : LocalTime.MAX);
+        if (filter.getToTime() == null) to = to.plusNanos(1);
+        Map<String, List<ApplicationUsageProjection>> grouped = new LinkedHashMap<>();
+        for (ApplicationUsageProjection row : activitySessionRepository.searchApplicationUsageGrouped(from, to,
+                filter.getEmployeeId(), filter.getEmployeeCode(), toPattern(filter.getEmployeeName()), filter.getDepartmentId(),
+                filter.getDeviceId(), toPattern(filter.getDeviceName()))) {
+            grouped.computeIfAbsent(row.getEmployeeId() + "|" + row.getDeviceId() + "|" + row.getUsageDate(), key -> new ArrayList<>()).add(row);
+        }
+        return grouped;
     }
 
     private String toPattern(String rawValue) {
@@ -149,7 +168,7 @@ public class ProductivityReportService {
         return grouped;
     }
 
-    private ProductivitySummaryDTO summarize(List<ActivitySession> group) {
+    private ProductivitySummaryDTO summarize(List<ActivitySession> group, List<ApplicationUsageProjection> usageRows) {
         ActivitySession any = group.get(0);
 
         long activeSeconds = 0;
@@ -157,8 +176,6 @@ public class ProductivityReportService {
         long breakSeconds = 0;
         LocalDateTime login = null;
         LocalDateTime logout = null;
-        Map<String, long[]> appTotals = new LinkedHashMap<>(); // [seconds, idleFlag(0/1)]
-        Map<String, String> appLastWindowTitle = new LinkedHashMap<>();
 
         for (ActivitySession s : group) {
             long duration = s.getDurationSeconds();
@@ -180,20 +197,14 @@ public class ProductivityReportService {
 
             String appName = s.getApplicationName() != null ? s.getApplicationName()
                     : (s.isIdleSession() ? "Idle" : "Unknown Application");
-            long[] totals = appTotals.computeIfAbsent(appName, k -> new long[]{0, s.isIdleSession() ? 1 : 0});
-            totals[0] += duration;
-            if (s.getWindowTitle() != null && !s.getWindowTitle().isBlank()) {
-                appLastWindowTitle.put(appName, s.getWindowTitle());
-            }
         }
 
         long loggedIn = activeSeconds + idleSeconds + breakSeconds;
         double productivity = loggedIn > 0 ? round2((activeSeconds * 100.0) / loggedIn) : 0;
 
-        List<AppUsageDTO> topApps = appTotals.entrySet().stream()
-                .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
+        List<AppUsageDTO> topApps = (usageRows == null ? List.<ApplicationUsageProjection>of() : usageRows).stream()
                 .limit(TOP_APPS_LIMIT)
-                .map(e -> new AppUsageDTO(e.getKey(), appLastWindowTitle.get(e.getKey()), e.getValue()[0], e.getValue()[1] == 1))
+            .map(e -> new AppUsageDTO(e.getApplicationName(), e.getWindowTitle(), e.getSeconds(), Boolean.TRUE.equals(e.getIdle())))
                 .toList();
 
         ProductivitySummaryDTO dto = new ProductivitySummaryDTO();
@@ -216,6 +227,12 @@ public class ProductivityReportService {
         dto.setProductivityPercent(productivity);
         dto.setTopApplications(topApps);
         return dto;
+    }
+
+    private String summaryKey(List<ActivitySession> group) {
+        ActivitySession first = group.get(0);
+        return (first.getEmployee() != null ? first.getEmployee().getId() : null) + "|"
+                + first.getDevice().getId() + "|" + first.getStartTime().toLocalDate();
     }
 
     private double round2(double value) {

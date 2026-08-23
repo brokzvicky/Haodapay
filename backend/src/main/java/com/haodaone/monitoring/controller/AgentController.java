@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Device-facing endpoints called by HaodaOne.Agent/Services/
  * ApiClientService.cs - paths ("agent/heartbeat", "agent/activity/batch")
- * and payload shapes are fixed by that client, not ours to rename.
+ * and payload shapes are figuixed by that client, not ours to rename.
  * Authenticated by security.AgentTokenAuthenticationFilter (a per-device
  * static bearer token, distinct from the user JWT scheme) rather than
  * permitAll - unlike attendance.controller.AdmsController's biometric

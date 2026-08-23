@@ -167,15 +167,15 @@ public class PdfReportService {
         for (ProductivitySummaryDTO d : days) {
             if (d.getTopApplications() == null) continue;
             for (AppUsageDTO app : d.getTopApplications()) {
-                appTotals.merge(app.getApplicationName(), app.getSeconds(), Long::sum);
-                appIdleFlag.put(app.getApplicationName(), app.isIdle());
+                String key = app.getApplicationName() + " - " + app.getWindowTitle();
+                appTotals.merge(key, app.getSeconds(), Long::sum);
+                appIdleFlag.put(key, app.isIdle());
             }
         }
         List<String[]> appRows = appTotals.entrySet().stream()
                 .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
-                .limit(8)
                 .map(e -> new String[]{e.getKey(), ExcelExportService.formatDuration(e.getValue()),
-                        Boolean.TRUE.equals(appIdleFlag.get(e.getKey())) ? "Idle" : "Active"})
+                    Boolean.TRUE.equals(appIdleFlag.get(e.getKey())) ? "Idle" : "Active"})
                 .toList();
         if (appRows.isEmpty()) {
             cursor.text("No application usage recorded for this period.", cursor.body, 9, true);
