@@ -131,6 +131,17 @@ public class DeviceEnrollmentService {
     }
 
     @Transactional
+    public void deleteDevice(Long id) {
+        MonitoredDevice device = findOrThrow(id);
+        device.setActive(false);
+        device.setDeleted(true);
+        device.setDeletedAt(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
+        deviceRepository.save(device);
+        auditLogService.log("MonitoredDevice", id, "DELETE",
+                "Deleted device '" + device.getDeviceName() + "' (soft delete; history retained)");
+    }
+
+    @Transactional
     public MonitoredDeviceDTO applyDirective(Long id, MonitoredDeviceDTO.DirectiveRequest request) {
         MonitoredDevice device = findOrThrow(id);
         if (request.getHeartbeatIntervalSeconds() != null) {
@@ -157,12 +168,12 @@ public class DeviceEnrollmentService {
         String rawToken = generateRawToken();
         device.setAgentTokenHash(hash(rawToken));
         MonitoredDevice saved = deviceRepository.save(device);
-        auditLogService.log("MonitoredDevice", id, "UPDATE", "Agent token rotated");
+        auditLogService.log("MonitoredDevice", id, "ROTATE_TOKEN", "Agent token rotated; previous token invalidated");
         return new MonitoredDeviceDTO.EnrollResponse(MonitoredDeviceDTO.from(saved), rawToken);
     }
 
     private MonitoredDevice findOrThrow(Long id) {
-        return deviceRepository.findById(id)
+        return deviceRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Monitored device not found: " + id));
     }
 

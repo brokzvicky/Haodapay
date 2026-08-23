@@ -10,6 +10,8 @@ public interface MonitoredDeviceRepository extends JpaRepository<MonitoredDevice
 
     List<MonitoredDevice> findAllByDeletedFalseOrderByDeviceNameAsc();
 
+    Optional<MonitoredDevice> findByIdAndDeletedFalse(Long id);
+
     Optional<MonitoredDevice> findByDeviceIdAndDeletedFalse(String deviceId);
 
     /** Used by the agent-token authentication filter - looked up by hash, never by raw token (see security.AgentTokenAuthenticationFilter). */
