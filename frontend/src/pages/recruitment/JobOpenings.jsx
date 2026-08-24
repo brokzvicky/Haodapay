@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Trash2, XCircle } from 'lucide-react';
 import { jobOpeningsApi } from '../../api/endpoints/recruitment';
 import { departmentsApi, designationsApi } from '../../api/endpoints/organization';
 import Card from '../../components/ui/Card';
@@ -25,7 +25,17 @@ export default function JobOpenings() {
   const [showCreate, setShowCreate] = useState(false);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
-  const { data: openings, isLoading, isError, refetch } = useQuery({ queryKey: ['job-openings'], queryFn: jobOpeningsApi.list });
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [closeTarget, setCloseTarget] = useState(null);
+  const queryClient = useQueryClient();
+  const deleteOpening = useMutation({
+    mutationFn: () => jobOpeningsApi.delete(deleteTarget.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-openings'] });
+      setDeleteTarget(null);
+    },
+  });
+  const { data: openings, isLoading, isError, error, refetch } = useQuery({ queryKey: ['job-openings'], queryFn: jobOpeningsApi.list });
 
   // Client-side, not a new backend query param: the requisition list for
   // any one company is small enough (dozens, not thousands) that fetching
@@ -90,7 +100,7 @@ export default function JobOpenings() {
         </div>
       </div>
 
-      {isError && <ErrorState description="Couldn't load job openings." onRetry={refetch} />}
+      {isError && <ErrorState description={error?.response?.data?.message || error?.message || "Couldn't load job openings."} onRetry={refetch} />}
 
       {!isError && (
         <div className="row g-3">
@@ -120,8 +130,8 @@ export default function JobOpenings() {
           {!isLoading &&
             filteredOpenings?.map((o) => (
               <div className="col-12 col-md-6 col-xl-4" key={o.id}>
-                <Link to={`/recruitment/${o.id}`} className="text-decoration-none">
-                  <Card hoverable>
+                <Card hoverable className="h-100 d-flex flex-column">
+                  <Link to={`/recruitment/${o.id}`} className="text-decoration-none flex-grow-1">
                     <div className="d-flex align-items-start justify-content-between mb-2">
                       <h3 style={{ fontSize: 'var(--hz-text-base)', fontWeight: 600, color: 'var(--hz-text-primary)', margin: 0 }}>{o.title}</h3>
                       <Badge variant={STATUS_VARIANT[o.status]} dot>
@@ -137,16 +147,55 @@ export default function JobOpenings() {
                         <strong>{o.candidateCount}</strong> candidate(s) · <strong>{o.hiredCount}</strong> hired
                       </span>
                     </div>
-                  </Card>
-                </Link>
+                    {o.status === 'CLOSED' && o.closedReason && (
+                      <div className="mt-3 pt-2" style={{ borderTop: '1px solid var(--hz-border-light)', fontSize: 12, color: 'var(--hz-text-secondary)' }}>
+                        <strong>Closed:</strong> {o.closedReason.replaceAll('_', ' ').toLowerCase()} {o.closedAt ? `· ${new Date(o.closedAt).toLocaleDateString()}` : ''}
+                      </div>
+                    )}
+                  </Link>
+                  <div className="d-flex align-items-center justify-content-end gap-2 px-4 pb-4 pt-2">
+                    {o.status === 'OPEN' && <button type="button" className="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1" title="Close requisition" onClick={() => setCloseTarget(o)}><XCircle size={14} /> Close</button>}
+                    <button type="button" className="hz-icon-btn d-inline-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }} aria-label={`Delete ${o.title}`} title="Delete requisition" onClick={() => setDeleteTarget(o)}>
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </Card>
               </div>
             ))}
         </div>
       )}
 
       {showCreate && <CreateJobOpeningModal onClose={() => setShowCreate(false)} />}
+      {deleteTarget && <Dialog open onClose={() => !deleteOpening.isPending && setDeleteTarget(null)} title="Delete requisition" description={`Delete “${deleteTarget.title}”?`}>
+        <p className="text-secondary-hz mb-4">This removes the requisition from the list. Candidate history is preserved, but requisitions with candidates cannot be deleted.</p>
+        {deleteOpening.isError && <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>{deleteOpening.error?.response?.data?.message || 'Could not delete requisition.'}</div>}
+        <div className="d-flex justify-content-end gap-2"><Button variant="secondary" type="button" disabled={deleteOpening.isPending} onClick={() => setDeleteTarget(null)}>Cancel</Button><Button variant="danger" type="button" loading={deleteOpening.isPending} onClick={() => deleteOpening.mutate()}>Delete</Button></div>
+      </Dialog>}
+      {closeTarget && <CloseRequisitionModal opening={closeTarget} onClose={() => setCloseTarget(null)} />}
     </div>
   );
+}
+
+function CloseRequisitionModal({ opening, onClose }) {
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
+  const [comments, setComments] = useState('');
+  const [error, setError] = useState('');
+  const close = useMutation({
+    mutationFn: () => jobOpeningsApi.close(opening.id, { reason, comments: comments.trim() || null }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['job-openings'] }); onClose(); },
+    onError: (err) => setError(err.response?.data?.message || 'Could not close requisition'),
+  });
+  return <Dialog open onClose={() => !close.isPending && onClose()} title="Close Requisition" description={opening.title}>
+    <form onSubmit={(event) => { event.preventDefault(); if (!reason) { setError('Select a close reason'); return; } setError(''); close.mutate(); }}>
+      {error && <div className="mb-3 px-3 py-2" style={{ background: 'var(--hz-danger-50)', color: 'var(--hz-danger-600)', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+      <FormField as="select" label="Reason" value={reason} onChange={setReason} required>
+        <option value="">Select a reason</option><option value="POSITION_FILLED">Position filled</option><option value="HIRING_CANCELLED">Hiring cancelled</option><option value="BUDGET_ON_HOLD">Budget on hold</option><option value="DUPLICATE_REQUISITION">Duplicate requisition</option><option value="OTHER">Other</option>
+      </FormField>
+      <FormField as="textarea" label="Comments (optional)" rows={4} value={comments} onChange={setComments} maxLength={1000} />
+      <div className="d-flex justify-content-end gap-2 mt-3"><Button variant="secondary" type="button" disabled={close.isPending} onClick={onClose}>Cancel</Button><Button variant="danger" type="submit" loading={close.isPending}>Close Requisition</Button></div>
+    </form>
+  </Dialog>;
 }
 
 function CreateJobOpeningModal({ onClose }) {

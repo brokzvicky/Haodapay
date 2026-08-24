@@ -9,10 +9,59 @@
  */
 const IST_TIME_ZONE = 'Asia/Kolkata';
 
-function toDate(value) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
+/**
+ * THE TIMESTAMP CONTRACT: every timestamp the monitoring API returns is UTC.
+ * This is the one place that turns an API timestamp value into an absolute
+ * instant - every other helper in this file, and every accessor in
+ * api/endpoints/monitoring.js, routes through this function. Don't call
+ * `new Date(apiValue)` anywhere else in the monitoring UI; call this.
+ *
+ * Why this function exists: an ISO-8601 string with an explicit UTC
+ * designator ("...Z" or "...+00:00") parses correctly everywhere. But a
+ * *bare* LocalDateTime string with no zone/offset at all - e.g.
+ * "2026-08-21T10:47:00", which is what Jackson emits by default for a
+ * java.time.LocalDateTime field - does NOT parse as UTC. Per the ECMAScript
+ * date-time string spec, a date-time with no offset is parsed as the
+ * *browser's local time*. On a machine whose local zone is Asia/Kolkata,
+ * "2026-08-21T10:47:00" (meant to be 10:47 UTC) gets read as 10:47 IST -
+ * five and a half hours off, which is exactly the "Last seen 7h ago for a
+ * heartbeat that just arrived" bug. The real fix is on the backend
+ * (serialize an actual UTC instant with an explicit offset - see the
+ * accompanying backend notes); this function is the frontend's half of
+ * that contract, and a safety net for any bare-LocalDateTime string that
+ * slips through in the meantime.
+ */
+const HAS_TIMEZONE_DESIGNATOR = /(Z|[+-]\d{2}:?\d{2})$/;
+
+export function parseApiTimestamp(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+  if (typeof value === 'number') {
+    // Epoch millis - already an absolute instant, nothing to normalize.
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value !== 'string') return null;
+
+  // Only append "Z" when the string carries no zone/offset of its own -
+  // never touch a value that's already explicit, and never do manual
+  // millisecond/offset arithmetic. `Date` itself does the timezone-aware
+  // conversion once the string unambiguously states its zone.
+  const normalized = HAS_TIMEZONE_DESIGNATOR.test(value) ? value : `${value}Z`;
+  const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Returns a proper absolute-instant ISO string ("...Z") for any API timestamp value - UTC in, UTC out, safe to re-parse anywhere downstream. */
+export function toUtcIsoString(value) {
+  const date = parseApiTimestamp(value);
+  return date ? date.toISOString() : null;
+}
+
+function toDate(value) {
+  return parseApiTimestamp(value);
 }
 
 /** e.g. "21 Aug 2026, 3:45 PM" */

@@ -19,6 +19,8 @@ import {
   UserCheck,
   Receipt,
   MonitorSmartphone,
+  Fingerprint,
+  BarChart3,
 } from 'lucide-react';
 
 /**
@@ -65,7 +67,9 @@ export const NAV_SECTIONS = [
     items: [
       { to: '/monitoring', icon: MonitorSmartphone, label: 'Dashboard', end: true },
       { to: '/monitoring/devices', icon: MonitorSmartphone, label: 'Devices' },
+      { to: '/monitoring/assignments', icon: Fingerprint, label: 'Device Assignment', permission: 'MONITORING_MANAGE' },
       { to: '/monitoring/activity', icon: Clock, label: 'Activity' },
+      { to: '/monitoring/reports', icon: BarChart3, label: 'Productivity Reports', permission: 'MONITORING_VIEW' },
     ],
   },
   {

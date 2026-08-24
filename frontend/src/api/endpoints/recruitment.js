@@ -4,6 +4,8 @@ export const jobOpeningsApi = {
   list: () => axiosClient.get('/api/job-openings').then((res) => res.data),
   create: (payload) => axiosClient.post('/api/job-openings', payload).then((res) => res.data),
   setStatus: (id, status) => axiosClient.patch(`/api/job-openings/${id}/status`, { status }).then((res) => res.data),
+  delete: (id) => axiosClient.delete(`/api/job-openings/${id}`),
+  close: (id, payload) => axiosClient.post(`/api/recruitment/requisitions/${id}/close`, payload).then((res) => res.data),
 };
 
 export const candidatesApi = {

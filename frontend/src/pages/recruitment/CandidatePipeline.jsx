@@ -155,6 +155,14 @@ export default function CandidatePipeline() {
             {opening?.departmentName || 'Any department'} {opening?.designationTitle ? `· ${opening.designationTitle}` : ''}
             {candidates ? ` · ${candidates.length} candidate${candidates.length === 1 ? '' : 's'}` : ''}
           </p>
+          {opening?.status === 'CLOSED' && (
+            <div className="mt-2 px-3 py-2" style={{ maxWidth: 620, background: 'var(--hz-warning-50)', color: 'var(--hz-warning-600)', borderRadius: 8, fontSize: 13 }}>
+              <strong>Closed</strong>{opening.closedReason ? ` · ${opening.closedReason.replaceAll('_', ' ').toLowerCase()}` : ''}
+              {opening.closedAt ? ` · ${new Date(opening.closedAt).toLocaleString()}` : ''}
+              {opening.closedBy ? ` · by ${opening.closedBy}` : ''}
+              {opening.closedComments ? <div className="mt-1">{opening.closedComments}</div> : null}
+            </div>
+          )}
         </div>
         <Button icon={UserPlus} onClick={() => setShowAddCandidate(true)}>
           Add Candidate

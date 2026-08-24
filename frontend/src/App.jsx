@@ -31,6 +31,8 @@ import MonitoringDashboard from './pages/monitoring/MonitoringDashboard';
 import MonitoringDevices from './pages/monitoring/Devices';
 import MonitoringDeviceDetails from './pages/monitoring/DeviceDetails';
 import MonitoringActivity from './pages/monitoring/Activity';
+import MonitoringDeviceAssignment from './pages/monitoring/DeviceAssignment';
+import MonitoringProductivityReports from './pages/monitoring/ProductivityReports';
 import SettingsUsers from './pages/SettingsUsers';
 import SettingsOrganization from './pages/SettingsOrganization';
 import SettingsLeave from './pages/SettingsLeave';
@@ -67,6 +69,8 @@ export default function App() {
           <Route path="monitoring/devices" element={<MonitoringDevices />} />
           <Route path="monitoring/devices/:id" element={<MonitoringDeviceDetails />} />
           <Route path="monitoring/activity" element={<MonitoringActivity />} />
+          <Route path="monitoring/assignments" element={<MonitoringDeviceAssignment />} />
+          <Route path="monitoring/reports" element={<MonitoringProductivityReports />} />
           <Route path="salary" element={<SalaryDashboard />} />
           <Route path="salary/employees" element={<EmployeeSalaryList />} />
           <Route path="salary/employees/:employeeId" element={<SalaryDetails />} />

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Monitor, AppWindow, Activity } from 'lucide-react';
+
 import {
   monitoringApi,
   getDeviceName,
@@ -19,7 +20,13 @@ import {
   getSessionDurationSeconds,
   aggregateSessionsByApp,
 } from '../../api/endpoints/monitoring';
-import { formatDateTimeIST, timeAgoIST, formatDurationShort } from '../../utils/formatDateTime';
+
+import {
+  formatDateTimeIST,
+  timeAgoIST,
+  formatDurationShort,
+} from '../../utils/formatDateTime';
+
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Table from '../../components/ui/Table';
@@ -34,77 +41,202 @@ export default function DeviceDetails() {
     isLoading: deviceLoading,
     isError: deviceError,
     refetch: refetchDevice,
-  } = useQuery({ queryKey: ['monitoring-device', id], queryFn: () => monitoringApi.deviceById(id), refetchInterval: 30_000 });
+  } = useQuery({
+    queryKey: ['monitoring-device', id],
+    queryFn: () => monitoringApi.deviceById(id),
+    refetchInterval: 30_000,
+    enabled: Boolean(id),
+  });
 
+  /*
+   * The backend returns a Spring Page for session queries.
+   * Normalize every supported response shape into a plain array.
+   */
   const {
-    data: sessions,
+    data: sessions = [],
     isLoading: sessionsLoading,
     isError: sessionsError,
     refetch: refetchSessions,
-  } = useQuery({ queryKey: ['monitoring-sessions-device', id], queryFn: () => monitoringApi.sessionsByDevice(id) });
+  } = useQuery({
+    queryKey: ['monitoring-sessions-device', id],
+    queryFn: () => monitoringApi.sessionsByDevice(id),
+    enabled: Boolean(id),
+    select: (response) => {
+      if (Array.isArray(response)) {
+        return response;
+      }
 
-  const recentSessions = useMemo(
-    () => [...(sessions || [])].sort((a, b) => new Date(getSessionStart(b)) - new Date(getSessionStart(a))).slice(0, 25),
+      if (Array.isArray(response?.content)) {
+        return response.content;
+      }
+
+      if (Array.isArray(response?.data?.content)) {
+        return response.data.content;
+      }
+
+      if (Array.isArray(response?.data)) {
+        return response.data;
+      }
+
+      return [];
+    },
+  });
+
+  const recentSessions = useMemo(() => {
+    return [...sessions]
+      .sort(
+        (a, b) =>
+          new Date(getSessionStart(b)) -
+          new Date(getSessionStart(a))
+      )
+      .slice(0, 25);
+  }, [sessions]);
+
+  const appUsage = useMemo(
+    () => aggregateSessionsByApp(sessions, 8),
     [sessions]
   );
-  const appUsage = useMemo(() => aggregateSessionsByApp(sessions, 8), [sessions]);
+
   const maxAppSeconds = appUsage[0]?.seconds || 1;
 
   const sessionColumns = [
-    { key: 'application', label: 'Application', headerClassName: 'ps-4', className: 'ps-4', render: (s) => getSessionApp(s), style: { fontWeight: 600 } },
-    { key: 'windowTitle', label: 'Window Title', render: (s) => getSessionWindowTitle(s) },
-    { key: 'start', label: 'Start Time', render: (s) => formatDateTimeIST(getSessionStart(s)) },
-    { key: 'end', label: 'End Time', render: (s) => formatDateTimeIST(getSessionEnd(s)) },
+    {
+      key: 'application',
+      label: 'Application',
+      headerClassName: 'ps-4',
+      className: 'ps-4',
+      render: (session) => getSessionApp(session),
+      style: { fontWeight: 600 },
+    },
+    {
+      key: 'windowTitle',
+      label: 'Window Title',
+      render: (session) => getSessionWindowTitle(session),
+    },
+    {
+      key: 'start',
+      label: 'Start Time',
+      render: (session) =>
+        formatDateTimeIST(getSessionStart(session)),
+    },
+    {
+      key: 'end',
+      label: 'End Time',
+      render: (session) =>
+        formatDateTimeIST(getSessionEnd(session)),
+    },
     {
       key: 'duration',
       label: 'Duration',
       headerClassName: 'pe-4',
       className: 'pe-4',
-      render: (s) => formatDurationShort(getSessionDurationSeconds(s)),
+      render: (session) =>
+        formatDurationShort(
+          getSessionDurationSeconds(session)
+        ),
     },
   ];
 
   return (
     <div className="d-flex flex-column gap-4">
+      {/* Back link */}
       <Link
         to="/monitoring/devices"
         className="d-inline-flex align-items-center gap-1 text-decoration-none"
-        style={{ color: 'var(--hz-text-secondary)', fontSize: 'var(--hz-text-sm)', width: 'fit-content' }}
+        style={{
+          color: 'var(--hz-text-secondary)',
+          fontSize: 'var(--hz-text-sm)',
+          width: 'fit-content',
+        }}
       >
-        <ArrowLeft size={15} /> Back to Devices
+        <ArrowLeft size={15} />
+        Back to Devices
       </Link>
 
-      {deviceError && <ErrorState description="Couldn't load this device." onRetry={refetchDevice} />}
+      {/* Device loading error */}
+      {deviceError && (
+        <ErrorState
+          description="Couldn't load this device."
+          onRetry={refetchDevice}
+        />
+      )}
 
+      {/* Device loading */}
       {deviceLoading && (
         <Card>
           <SkeletonText lines={4} />
         </Card>
       )}
 
+      {/* Device information */}
       {!deviceLoading && !deviceError && device && (
         <Card>
           <div className="d-flex align-items-start justify-content-between flex-wrap gap-3">
             <div className="d-flex align-items-center gap-3">
-              <div className="hz-stat__icon" style={{ width: 48, height: 48, background: 'var(--hz-primary-50)', color: 'var(--hz-primary-600)' }}>
+              <div
+                className="hz-stat__icon"
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: 'var(--hz-primary-50)',
+                  color: 'var(--hz-primary-600)',
+                }}
+              >
                 <Monitor size={22} />
               </div>
+
               <div>
-                <h1 style={{ fontSize: 'var(--hz-text-xl)', fontWeight: 700, marginBottom: 2 }}>{getDeviceName(device)}</h1>
+                <h1
+                  style={{
+                    fontSize: 'var(--hz-text-xl)',
+                    fontWeight: 700,
+                    marginBottom: 2,
+                  }}
+                >
+                  {getDeviceName(device)}
+                </h1>
+
                 <div className="d-flex align-items-center gap-2">
-                  <Badge variant={isDeviceOnline(device) ? 'success' : 'neutral'} dot>
-                    {isDeviceOnline(device) ? 'Online' : 'Offline'}
+                  <Badge
+                    variant={
+                      isDeviceOnline(device)
+                        ? 'success'
+                        : 'neutral'
+                    }
+                    dot
+                  >
+                    {isDeviceOnline(device)
+                      ? 'Online'
+                      : 'Offline'}
                   </Badge>
-                  <span style={{ fontSize: 12, color: 'var(--hz-text-muted)' }}>
-                    Last heartbeat {timeAgoIST(getDeviceLastSeen(device))}
+
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--hz-text-muted)',
+                    }}
+                  >
+                    Last heartbeat{' '}
+                    {timeAgoIST(getDeviceLastSeen(device))}
                   </span>
                 </div>
               </div>
             </div>
+
             {getDeviceEmployeeId(device) && (
-              <Link to={`/employees/${getDeviceEmployeeId(device)}`} className="text-decoration-none">
-                <span style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, color: 'var(--hz-primary-600)' }}>
-                  View {getDeviceEmployeeName(device) || 'employee'} →
+              <Link
+                to={`/employees/${getDeviceEmployeeId(device)}`}
+                className="text-decoration-none"
+              >
+                <span
+                  style={{
+                    fontSize: 'var(--hz-text-sm)',
+                    fontWeight: 600,
+                    color: 'var(--hz-primary-600)',
+                  }}
+                >
+                  View{' '}
+                  {getDeviceEmployeeName(device) || 'employee'} →
                 </span>
               </Link>
             )}
@@ -112,83 +244,209 @@ export default function DeviceDetails() {
 
           <div className="row g-3 mt-1">
             <div className="col-6 col-md-3">
-              <p className="text-secondary-hz mb-1" style={{ fontSize: 12, fontWeight: 500 }}>
+              <p
+                className="text-secondary-hz mb-1"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
                 Employee
               </p>
-              <p style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, marginBottom: 0 }}>{getDeviceEmployeeName(device) || '—'}</p>
+
+              <p
+                style={{
+                  fontSize: 'var(--hz-text-sm)',
+                  fontWeight: 600,
+                  marginBottom: 0,
+                }}
+              >
+                {getDeviceEmployeeName(device) || '—'}
+              </p>
             </div>
+
             <div className="col-6 col-md-3">
-              <p className="text-secondary-hz mb-1" style={{ fontSize: 12, fontWeight: 500 }}>
+              <p
+                className="text-secondary-hz mb-1"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
                 Operating System
               </p>
-              <p style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, marginBottom: 0 }}>{getDeviceOS(device)}</p>
+
+              <p
+                style={{
+                  fontSize: 'var(--hz-text-sm)',
+                  fontWeight: 600,
+                  marginBottom: 0,
+                }}
+              >
+                {getDeviceOS(device)}
+              </p>
             </div>
+
             <div className="col-6 col-md-3">
-              <p className="text-secondary-hz mb-1" style={{ fontSize: 12, fontWeight: 500 }}>
+              <p
+                className="text-secondary-hz mb-1"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
                 Agent Version
               </p>
-              <p style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, marginBottom: 0 }}>{getDeviceAgentVersion(device)}</p>
+
+              <p
+                style={{
+                  fontSize: 'var(--hz-text-sm)',
+                  fontWeight: 600,
+                  marginBottom: 0,
+                }}
+              >
+                {getDeviceAgentVersion(device)}
+              </p>
             </div>
+
             <div className="col-6 col-md-3">
-              <p className="text-secondary-hz mb-1" style={{ fontSize: 12, fontWeight: 500 }}>
+              <p
+                className="text-secondary-hz mb-1"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
                 Last Heartbeat (IST)
               </p>
-              <p style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 600, marginBottom: 0 }}>{formatDateTimeIST(getDeviceLastSeen(device))}</p>
+
+              <p
+                style={{
+                  fontSize: 'var(--hz-text-sm)',
+                  fontWeight: 600,
+                  marginBottom: 0,
+                }}
+              >
+                {formatDateTimeIST(
+                  getDeviceLastSeen(device)
+                )}
+              </p>
             </div>
           </div>
         </Card>
       )}
 
+      {/* Activity */}
       <div className="row g-3">
+        {/* Application usage */}
         <div className="col-12 col-xl-4">
-          <Card hoverable title="Application Usage Summary" subtitle="Most recent sessions on this device">
+          <Card
+            hoverable
+            title="Application Usage Summary"
+            subtitle="Most recent sessions on this device"
+          >
             {sessionsLoading && <SkeletonText lines={4} />}
-            {sessionsError && <ErrorState description="Couldn't load application usage." onRetry={refetchSessions} />}
-            {!sessionsLoading && !sessionsError && appUsage.length === 0 && (
-              <div className="hz-state">
-                <div className="hz-state__icon-wrap">
-                  <AppWindow size={26} />
-                </div>
-                <p className="hz-state__title">No activity recorded yet</p>
-              </div>
+
+            {sessionsError && (
+              <ErrorState
+                description="Couldn't load application usage."
+                onRetry={refetchSessions}
+              />
             )}
-            {!sessionsLoading && !sessionsError && appUsage.length > 0 && (
-              <div className="d-flex flex-column gap-3">
-                {appUsage.map((app) => {
-                  const pct = Math.round((app.seconds / maxAppSeconds) * 100);
-                  return (
-                    <div key={app.applicationName}>
-                      <div className="d-flex justify-content-between mb-1">
-                        <span style={{ fontSize: 'var(--hz-text-sm)', fontWeight: 500 }}>{app.applicationName}</span>
-                        <span style={{ fontSize: 'var(--hz-text-sm)', color: 'var(--hz-text-secondary)', fontWeight: 600 }}>
-                          {formatDurationShort(app.seconds)}
-                        </span>
-                      </div>
-                      <div style={{ height: 8, borderRadius: 999, background: 'var(--hz-gray-100)', overflow: 'hidden' }}>
+
+            {!sessionsLoading &&
+              !sessionsError &&
+              appUsage.length === 0 && (
+                <div className="hz-state">
+                  <div className="hz-state__icon-wrap">
+                    <AppWindow size={26} />
+                  </div>
+
+                  <p className="hz-state__title">
+                    No activity recorded yet
+                  </p>
+                </div>
+              )}
+
+            {!sessionsLoading &&
+              !sessionsError &&
+              appUsage.length > 0 && (
+                <div className="d-flex flex-column gap-3">
+                  {appUsage.map((app) => {
+                    const pct = Math.round(
+                      (app.seconds / maxAppSeconds) * 100
+                    );
+
+                    return (
+                      <div key={app.applicationName}>
+                        <div className="d-flex justify-content-between mb-1">
+                          <span
+                            style={{
+                              fontSize:
+                                'var(--hz-text-sm)',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {app.applicationName}
+                          </span>
+
+                          <span
+                            style={{
+                              fontSize:
+                                'var(--hz-text-sm)',
+                              color:
+                                'var(--hz-text-secondary)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {formatDurationShort(
+                              app.seconds
+                            )}
+                          </span>
+                        </div>
+
                         <div
                           style={{
                             height: 8,
                             borderRadius: 999,
-                            width: `${pct}%`,
-                            background: 'var(--hz-primary-500)',
-                            transition: 'width 500ms ease',
+                            background:
+                              'var(--hz-gray-100)',
+                            overflow: 'hidden',
                           }}
-                        />
+                        >
+                          <div
+                            style={{
+                              height: 8,
+                              borderRadius: 999,
+                              width: `${pct}%`,
+                              background:
+                                'var(--hz-primary-500)',
+                              transition:
+                                'width 500ms ease',
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
           </Card>
         </div>
 
+        {/* Sessions table */}
         <div className="col-12 col-xl-8">
-          <Card hoverable title="Recent Activity Sessions" bodyClassName="p-0">
+          <Card
+            hoverable
+            title="Recent Activity Sessions"
+            bodyClassName="p-0"
+          >
             <Table
               columns={sessionColumns}
               rows={recentSessions}
-              getRowKey={(s) => getSessionId(s)}
+              getRowKey={(session) =>
+                getSessionId(session)
+              }
               isLoading={sessionsLoading}
               isError={sessionsError}
               onRetry={refetchSessions}

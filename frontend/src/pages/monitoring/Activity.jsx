@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, ChevronLeft, ChevronRight, Activity as ActivityIcon } from 'lucide-react';
 import {
@@ -19,60 +19,65 @@ import Table from '../../components/ui/Table';
 
 const PAGE_SIZE = 25;
 
+/**
+ * Fix for "No activity in this range": this page used to fetch only the
+ * 50 most-recent sessions for a selected employee (unfiltered by date)
+ * and apply the date range as a client-side filter on that truncated
+ * batch - any date range outside those 50 rows silently showed zero
+ * results even when matching data existed. It now calls
+ * monitoringApi.sessionsSearch(), which combines date range + employee +
+ * device server-side (GET /api/monitoring/sessions/search) with real
+ * pagination, so filters are always applied against the full table.
+ */
 export default function Activity() {
   const today = toISTDateInputValue();
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [employeeId, setEmployeeId] = useState('');
+  const [deviceId, setDeviceId] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: () => employeesApi.list() });
+  const { data: devices } = useQuery({ queryKey: ['monitoring-devices'], queryFn: monitoringApi.devices });
 
   const { from } = istDateInputToUtcRange(dateFrom);
   const { to } = istDateInputToUtcRange(dateTo);
 
-  // The by-employee endpoint doesn't accept a date range, so when an
-  // employee is selected we fetch all of their sessions and apply the date
-  // filter client-side; otherwise we ask the backend to filter by range
-  // directly via /api/monitoring/sessions.
   const {
-    data: rawSessions,
+    data,
     isLoading,
     isError,
     refetch,
   } = useQuery({
-    queryKey: employeeId ? ['monitoring-sessions-employee', employeeId] : ['monitoring-sessions-range', from, to],
-    queryFn: () => (employeeId ? monitoringApi.sessionsByEmployee(employeeId) : monitoringApi.sessions(from, to)),
+    queryKey: ['monitoring-sessions-search', from, to, employeeId, deviceId, page],
+    queryFn: () =>
+      monitoringApi.sessionsSearch({
+        from,
+        to,
+        employeeId: employeeId || undefined,
+        deviceId: deviceId || undefined,
+        page,
+        size: PAGE_SIZE,
+      }),
   });
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const fromMs = from ? new Date(from).getTime() : null;
-    const toMs = to ? new Date(to).getTime() : null;
+  const rows = data?.rows || [];
+  const totalElements = data?.totalElements ?? 0;
+  const totalPages = Math.max(data?.totalPages ?? 1, 1);
 
-    return (rawSessions || [])
-      .filter((s) => {
-        if (employeeId && (fromMs || toMs)) {
-          const start = getSessionStart(s);
-          const startMs = start ? new Date(start).getTime() : null;
-          if (startMs != null) {
-            if (fromMs && startMs < fromMs) return false;
-            if (toMs && startMs > toMs) return false;
-          }
-        }
-        if (!q) return true;
-        const haystack = [getSessionEmployeeName(s), getSessionDeviceName(s), getSessionApp(s), getSessionWindowTitle(s)]
+  // Text search only narrows what's already on the current page - a full
+  // cross-page text search would need its own backend query param, which
+  // isn't part of this fix's scope.
+  const q = search.trim().toLowerCase();
+  const pageRows = q
+    ? rows.filter((s) =>
+        [getSessionEmployeeName(s), getSessionDeviceName(s), getSessionApp(s), getSessionWindowTitle(s)]
           .join(' ')
-          .toLowerCase();
-        return haystack.includes(q);
-      })
-      .sort((a, b) => new Date(getSessionStart(b)) - new Date(getSessionStart(a)));
-  }, [rawSessions, search, employeeId, from, to]);
-
-  const totalElements = filtered.length;
-  const totalPages = Math.max(Math.ceil(totalElements / PAGE_SIZE), 1);
-  const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+          .toLowerCase()
+          .includes(q)
+      )
+    : rows;
 
   function updateFilter(setter) {
     return (value) => {
@@ -111,10 +116,10 @@ export default function Activity() {
           <Search size={16} className="position-absolute" style={{ left: 12, top: 10, color: 'var(--hz-text-muted)' }} />
           <input
             type="search"
-            placeholder="Search employee, app, window, device…"
+            placeholder="Search employee, app, window, device… (current page)"
             className="form-control ps-5"
             value={search}
-            onChange={(e) => updateFilter(setSearch)(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
@@ -123,6 +128,15 @@ export default function Activity() {
           {(employees || []).map((emp) => (
             <option key={emp.id} value={emp.id}>
               {emp.fullName}
+            </option>
+          ))}
+        </select>
+
+        <select className="form-select" style={{ maxWidth: 220 }} value={deviceId} onChange={(e) => updateFilter(setDeviceId)(e.target.value)}>
+          <option value="">All Devices</option>
+          {(devices || []).map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.deviceName}
             </option>
           ))}
         </select>
@@ -143,8 +157,8 @@ export default function Activity() {
           isError={isError}
           onRetry={refetch}
           emptyIcon={ActivityIcon}
-          emptyTitle={search || employeeId ? 'No matching activity' : 'No activity in this range'}
-          emptyDescription="Try widening the date range, or clearing the search and employee filters."
+          emptyTitle={search ? 'No matching activity on this page' : 'No activity in this range'}
+          emptyDescription="Try widening the date range, or clearing the search, employee, and device filters."
         />
 
         {!isLoading && !isError && totalElements > 0 && (
